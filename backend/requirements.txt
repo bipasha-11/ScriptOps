@@ -6,3 +6,10 @@ python-jose[cryptography]
 python-multipart
 sendgrid
 email-validator
+PyPDF2
+pandas
+numpy
+sentence-transformers
+scikit-learn
+groq
+supabase
