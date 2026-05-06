@@ -2,92 +2,111 @@
 
 **ScriptOps** is an advanced, full-stack application designed to revolutionize film pre-production. It analyzes screenplay text, automatically splits it into scenes, extracts logistical features (VFX, stunts, locations), calculates budget and risk estimates, and provides actionable insights powered by **Groq** and the **LLaMA 3.3** model.
 
-## ✨ Features
+![Stack](https://img.shields.io/badge/Stack-React_|_FastAPI_|_Docker-blue)
+![AI](https://img.shields.io/badge/AI-Groq_LLaMA_3.3-orange)
+![Mail](https://img.shields.io/badge/Mail-SendGrid_API-green)
+![Deployment](https://img.shields.io/badge/Deployment-Render_|_Vercel-purple)
 
-- **Automated Script Parsing:** Upload your screenplay (`.txt`) and watch it get instantly tokenized into a structured breakdown of scenes, locations, character counts, and day/night sequences.
-- **Risk & Budget Estimation:** Algorithmically detects high-risk elements (stunts, animals, VFX, pyrotechnics) and calculates estimated budgets and production risk scores (0-100) per scene.
-- **Dynamic Visual Dashboards:**
-  - **Risk Heatmap:** Quickly spot problematic scenes across your entire shooting schedule.
-  - **Budget Distribution:** Interactive charts analyzing cost breakdowns across location types and sequence types.
-- **What-If Simulator:** Tweak scene parameters (e.g., changing a VFX-heavy Night shoot to a Day shoot) and watch the estimated budget recalculate in real-time.
-- **AI Production Assistant (Powered by Groq):** 
-  - **Scene & Overall Insights:** Instant executive summaries, key production concerns, cost optimization recommendations, and predicted shooting days.
-  - **Interactive Chatbot:** Chat directly with the AI, which acts as your production manager and is deeply aware of the script context, budget parameters, and scene complexities.
-- **Graceful In-Memory Store:** Full Supabase support for persistent databases exists, but the app flawlessly degrades to in-memory state so you can run it immediately without external databases.
+---
 
-## 🚀 Tech Stack
+### 🖥️ Core Platform
+| Home Page | Risk Analysis Dashboard |
+| :---: | :---: |
+| ![Home](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/home.png) | ![Risk](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/risk_analysis.png) |
 
-- **Backend:** Python, FastAPI, Uvicorn, Pydantic, Groq SDK.
-- **Frontend:** React, Vite, Recharts, Custom CSS (Dark Mode Glassmorphic UI).
-- **AI:** Groq Inference Engine (`llama-3.3-70b-versatile`).
+### 🤖 AI Intelligence & Insights
+| Scene-Level Insights | AI Production Assistant (Chat) |
+| :---: | :---: |
+| ![Insights](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/insights.png) | ![Chat](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/chat.png) |
 
-## 🛠️ Setup Instructions
+### 🔐 Authentication
+| Sign In | Create Account |
+| :---: | :---: |
+| ![Sign In](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/signin.png) | ![Create Account](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/signup.png) |
 
-### 1. Requirements
-Ensure you have the following installed:
-- Python 3.9+
-- Node.js (v16+)
-- A [Groq API Key](https://console.groq.com/keys)
+---
 
-### 2. Backend Setup
-1. Navigate to the `backend` folder:
+### ✨ Automated Script Intelligence
+- **Automated Script Parsing**: Upload screenplays (`.txt`/`.pdf`) for instant scene tokenization, location extraction, and character count analysis.
+- **Risk & Budget Estimation**: Algorithmically detects high-risk elements (stunts, animals, VFX, pyrotechnics) and calculates production risk scores (0-100).
+- **What-If Simulator**: Tweak scene parameters (e.g., changing a VFX-heavy Night shoot to a Day shoot) and watch the estimated budget recalculate in real-time.
+
+### 🤖 AI-Powered Production Strategy
+- **Executive Summaries**: Instant production summaries, key concerns, and cost optimization recommendations per scene via **Groq**.
+- **Interactive Assistant**: A context-aware chatbot that acts as your production manager, deeply aware of script context and budget parameters.
+- **Visual Dashboards**: Risk heatmaps and budget distribution charts for a data-driven overview of your shooting schedule.
+
+### ✉️ Production-Ready Delivery
+- **SendGrid Integration**: Professional OTP verification flow using the SendGrid API to ensure reliable delivery in cloud environments.
+- **Robust Authentication**: Secure JWT-based session management with native bcrypt hashing.
+
+---
+
+## 💾 Data Architecture
+The system uses a lightweight JSON-based storage for user management and script metadata, designed for zero-latency in-memory operations.
+
+```mermaid
+erDiagram
+    USER ||--o{ SCRIPT : "manages"
+    USER {
+        string email PK
+        string name
+        string password_hash
+        timestamp created_at
+    }
+    SCRIPT {
+        string script_id PK
+        string title
+        list scenes
+        float total_budget
+        float avg_risk
+    }
+    SCENE {
+        int scene_number
+        string heading
+        string location
+        list characters
+        dict features
+        float risk_score
+    }
+```
+
+---
+
+## 🏗️ Architecture: The Intelligence Flow
+When a screenplay is uploaded:
+1. **Parsing**: The engine tokenizes the text into discrete scenes based on industry-standard screenplay headings.
+2. **Extraction**: A feature-extraction layer identifies production requirements (stunts, VFX, vehicles, night shoots).
+3. **Scoring**: The Risk Engine applies weighted multipliers to calculate the "Production Difficulty" and "Estimated Budget".
+4. **Insight Generation**: Data is passed to **Groq (LLaMA 3.3)** to generate strategic insights and populate the interactive production assistant.
+
+---
+
+### Environment Variables
+Configure the following in your `.env` or cloud provider:
+- `GROQ_API_KEY`: Your Groq Inference Engine API key.
+- `SENDGRID_API_KEY`: SendGrid API key for emails.
+- `SENDGRID_FROM_EMAIL`: Your verified SendGrid sender address.
+- `JWT_SECRET`: Secret key for token generation.
+- `FRONTEND_URL`: Your Vercel deployment URL (for CORS).
+
+### Local Development
+1. **Backend**
    ```bash
    cd backend
-   ```
-2. Install Python dependencies:
-   ```bash
-   pip install fastapi uvicorn pydantic python-dotenv groq python-multipart
-   ```
-3. Configure Environment Variables:
-   Create a `.env` file in the `backend/` directory:
-   ```env
-   # Required for AI features
-   GROQ_API_KEY=your_groq_api_key_here
-   
-   # Optional: For persistent storage
-   SUPABASE_URL=
-   SUPABASE_ANON_KEY=
-   SUPABASE_SERVICE_KEY=
-   ```
-4. Start the FastAPI server:
-   ```bash
+   pip install -r requirements.txt
    python -m uvicorn main:app --port 8000 --reload
    ```
-
-### 3. Frontend Setup
-1. Navigate to the `frontend` folder:
+2. **Frontend**
    ```bash
    cd frontend
-   ```
-2. Install Node dependencies:
-   ```bash
    npm install
-   ```
-3. Start the Vite development server:
-   ```bash
    npm run dev
    ```
 
-### 4. Running the App
-Open your browser and navigate to `http://localhost:5173`. 
-Upload the included `sample_script.txt` (or your own formatted screenplay) and start exploring the insights!
+---
 
-## 📁 Repository Structure
+Distributed under the MIT License. See `LICENSE` for more information.
 
-```
-ScriptOps/
-├── backend/
-│   ├── api/             # API Router Endpoints (upload, insights, auth, operations)
-│   ├── core/            # Business logic (script parser, Groq LLM client, Supabase)
-│   ├── models/          # Pydantic Schemas
-│   ├── main.py          # FastAPI Application Entry Point
-│   └── .env             # Global Backend Configuration
-├── frontend/
-│   ├── src/
-│   │   ├── components/  # React UI Components (InsightsPanel, FileUpload, etc.)
-│   │   ├── App.jsx      # Main Application Container & Dashboard Layout
-│   │   └── components.css # Modern Styling System
-│   ├── package.json     # Node Dependencies
-│   └── vite.config.js   # Vite Bundler Config
-└── sample_script.txt    # Example screenplay for testing
-```
+---
+**Developed to demonstrate AI-driven automation in film production, production-ready cloud deployment, and advanced NLP script analysis.**
