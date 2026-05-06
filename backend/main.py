@@ -20,11 +20,13 @@ app = FastAPI(
 )
 
 # CORS — allow Vercel frontend (set FRONTEND_URL in Render env vars)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "*").rstrip("/")
 origins = ["*"] if FRONTEND_URL == "*" else [
     FRONTEND_URL,
+    f"{FRONTEND_URL}/",
     "http://localhost:5173",
     "http://localhost:3000",
+    "http://localhost:8000",
 ]
 
 app.add_middleware(
