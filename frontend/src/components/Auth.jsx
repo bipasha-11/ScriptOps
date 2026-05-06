@@ -33,10 +33,14 @@ const Auth = ({ onLogin, onCancel }) => {
         body: JSON.stringify(body),
       });
       
-      const data = await response.json();
-      
+      let data = {};
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      }
+
       if (!response.ok) {
-        throw new Error(data.detail || 'Authentication failed');
+        throw new Error(data.detail || `Server Error (${response.status})`);
       }
       
       if (isLogin) {
@@ -68,8 +72,12 @@ const Auth = ({ onLogin, onCancel }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Failed to resend OTP');
+      let data = {};
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      }
+      if (!response.ok) throw new Error(data.detail || `Failed to resend OTP (${response.status})`);
       setResendTimer(60);
     } catch (err) {
       setError(err.message);
@@ -94,8 +102,12 @@ const Auth = ({ onLogin, onCancel }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Invalid OTP');
+      let data = {};
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      }
+      if (!response.ok) throw new Error(data.detail || `Invalid OTP (${response.status})`);
       
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('userEmail', data.email);
