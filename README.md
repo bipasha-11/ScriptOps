@@ -6,6 +6,13 @@
 ![AI](https://img.shields.io/badge/AI-Groq_LLaMA_3.3-orange)
 ![Mail](https://img.shields.io/badge/Mail-SendGrid_API-green)
 ![Deployment](https://img.shields.io/badge/Deployment-Render_|_Vercel-purple)
+![Live](https://img.shields.io/badge/Live_Demo-ScriptOps-brightgreen?logo=vercel&link=https://scriptops.vercel.app/)
+
+---
+
+### 🔗 [Visit Live Application](https://scriptops.vercel.app/)
+
+---
 
 ---
 
