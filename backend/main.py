@@ -9,9 +9,9 @@ from fastapi.responses import FileResponse
 import os
 from dotenv import load_dotenv
 
-# Explicitly load backend/.env
+# Load .env for local development (Render injects env vars directly)
 env_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(env_path)
+load_dotenv(env_path, override=False)
 
 app = FastAPI(
     title="Script Intelligence API",

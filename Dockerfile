@@ -11,7 +11,7 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Build Backend and Final Image
+# Stage 2: Backend Final Image
 FROM python:3.11-slim
 WORKDIR /app
 
@@ -19,15 +19,16 @@ WORKDIR /app
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code
-COPY backend/ ./
+# Copy backend as a package named 'backend'
+COPY backend/ ./backend/
 
-# Copy built frontend to backend/static
-COPY --from=frontend-builder /app/frontend/dist ./static
+# Copy built frontend into backend/static so FastAPI can serve it
+COPY --from=frontend-builder /app/frontend/dist ./backend/static
 
 # Create data directory for user persistence
-RUN mkdir -p data
+RUN mkdir -p backend/data
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run as 'backend.main' so relative imports work correctly
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
