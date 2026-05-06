@@ -14,41 +14,46 @@
 
 ---
 
-### 🖥️ Core Platform & Dashboard
-| Landing Page | Welcome View | Production Heatmap |
+### ✨ Landing Page Experience
+The ScriptOps landing page guides users through the core value propositions of AI-driven production.
+
+| Hero Section | High-Level Vision |
+| :---: | :---: |
+| ![Landing Page](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/landing%20page.png) | ![Landing Page 2](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/landingpage2.png) |
+
+| "Shatter the Narrative" (UI1) | "Detect Danger Early" (UI2) | "Precision Forecasting" (UI3) |
 | :---: | :---: | :---: |
-| ![Landing Page](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/landing%20page.png) | ![Landing Page 2](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/landingpage2.png) | ![Heatmap](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/heatmap.png) |
+| ![UI1](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui1.png) | ![UI2](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui2.png) | ![UI3](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui3.png) |
 
-### 🤖 AI Intelligence & Analysis
-| Analysis View (UI1) | Insights Panel (UI2) | Data Visualization (UI3) | AI Chatbot |
-| :---: | :---: | :---: | :---: |
-| ![UI1](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui1.png) | ![UI2](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui2.png) | ![UI3](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui3.png) | ![Chatbot](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/chatbot.png) |
+---
 
-### 📂 Script Management
-| Upload Screenplay | My Scripts Archive | Account Settings |
-| :---: | :---: | :---: |
-| ![Upload](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/upload.png) | ![Scripts](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/scripts.png) | ![Settings](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/settings.png) |
+### 🔐 User Onboarding (Authentication)
+A secure, streamlined entry point featuring real-time email verification.
 
-### 🔐 Authentication Flow
 | Sign In | Create Account | OTP Verification |
 | :---: | :---: | :---: |
 | ![Sign In](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/signin.png) | ![Sign Up](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/signup.png) | ![OTP](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/otp.png) |
 
 ---
 
-### ✨ Automated Script Intelligence
-- **Automated Script Parsing**: Upload screenplays (`.txt`/`.pdf`) for instant scene tokenization, location extraction, and character count analysis.
-- **Risk & Budget Estimation**: Algorithmically detects high-risk elements (stunts, animals, VFX, pyrotechnics) and calculates production risk scores (0-100).
-- **What-If Simulator**: Tweak scene parameters (e.g., changing a VFX-heavy Night shoot to a Day shoot) and watch the estimated budget recalculate in real-time.
+### 🖥️ Core Dashboard & Analysis
+The heart of the application, where data meets production strategy.
 
-### 🤖 AI-Powered Production Strategy
-- **Executive Summaries**: Instant production summaries, key concerns, and cost optimization recommendations per scene via **Groq**.
-- **Interactive Assistant**: A context-aware chatbot that acts as your production manager, deeply aware of script context and budget parameters.
-- **Visual Dashboards**: Risk heatmaps and budget distribution charts for a data-driven overview of your shooting schedule.
+| Risk Analysis Heatmap | AI Script Intelligence (Chat) |
+| :---: | :---: |
+| ![Heatmap](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/heatmap.png) | ![Chatbot](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/chatbot.png) |
 
-### ✉️ Production-Ready Delivery
-- **SendGrid Integration**: Professional OTP verification flow using the SendGrid API to ensure reliable delivery in cloud environments.
-- **Robust Authentication**: Secure JWT-based session management with native bcrypt hashing.
+| Script Inventory Archive | Script Ingestion/Upload | User Configuration |
+| :---: | :---: | :---: |
+| ![Scripts](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/scripts.png) | ![Upload](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/upload.png) | ![Settings](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/settings.png) |
+
+---
+
+### 🚀 Key Features
+- **Automated Script Parsing**: Upload screenplays (`.txt`/`.pdf`) for instant scene tokenization and location extraction.
+- **Risk & Budget Estimation**: Algorithmically detects high-risk elements (stunts, VFX, etc.) and calculates production difficulty scores.
+- **What-If Simulator**: Tweak scene parameters and watch estimated budgets recalculate in real-time.
+- **AI Production Assistant**: A context-aware chatbot (Powered by Groq) for deep script analysis and cost optimization.
 
 ---
 
@@ -85,38 +90,24 @@ erDiagram
 
 ## 🏗️ Architecture: The Intelligence Flow
 When a screenplay is uploaded:
-1. **Parsing**: The engine tokenizes the text into discrete scenes based on industry-standard screenplay headings.
-2. **Extraction**: A feature-extraction layer identifies production requirements (stunts, VFX, vehicles, night shoots).
-3. **Scoring**: The Risk Engine applies weighted multipliers to calculate the "Production Difficulty" and "Estimated Budget".
-4. **Insight Generation**: Data is passed to **Groq (LLaMA 3.3)** to generate strategic insights and populate the interactive production assistant.
+1. **Parsing**: The engine tokenizes the text into discrete scenes.
+2. **Extraction**: A feature-extraction layer identifies production requirements.
+3. **Scoring**: The Risk Engine applies weighted multipliers to calculate difficulty.
+4. **Insight Generation**: Data is passed to **Groq (LLaMA 3.3)** to generate strategic insights.
 
 ---
 
 ### Environment Variables
-Configure the following in your `.env` or cloud provider:
-- `GROQ_API_KEY`: Your Groq Inference Engine API key.
+Configure the following in your cloud provider:
+- `GROQ_API_KEY`: Groq Inference Engine API key.
 - `SENDGRID_API_KEY`: SendGrid API key for emails.
-- `SENDGRID_FROM_EMAIL`: Your verified SendGrid sender address.
+- `SENDGRID_FROM_EMAIL`: Verified SendGrid sender address.
 - `JWT_SECRET`: Secret key for token generation.
 - `FRONTEND_URL`: Your Vercel deployment URL (for CORS).
-
-### Local Development
-1. **Backend**
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   python -m uvicorn main:app --port 8000 --reload
-   ```
-2. **Frontend**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
 
 ---
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
-**Developed to demonstrate AI-driven automation in film production, production-ready cloud deployment, and advanced NLP script analysis.**
+**Developed to demonstrate AI-driven automation in film production and production-ready cloud deployment.**
