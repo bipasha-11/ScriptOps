@@ -1,146 +1,206 @@
-"""
-Auth routes + JWT middleware dependency.
-
-Provides:
-  POST /api/v1/auth/signup   — create a new user via Supabase Auth
-  POST /api/v1/auth/signin   — sign in, returns access_token
-  GET  /api/v1/auth/me       — return current user (requires Bearer token)
-
-When Supabase is not configured all endpoints return 503 with a clear message
-so the rest of the API continues to work without auth.
-"""
-
 import os
-import logging
+import json
+import random
+import time
+from datetime import datetime, timedelta
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from ..core.mail import send_otp_email
 
-from ..core.supabase_client import get_client, is_configured
-
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+bearer_scheme = HTTPBearer()
 
-# ── Security scheme ────────────────────────────────────────────────────────────
-bearer_scheme = HTTPBearer(auto_error=False)
+# Configuration
+SECRET_KEY = os.getenv("JWT_SECRET", "supersecretkey123")
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
+# File-based user storage
+USERS_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "users.json")
+os.makedirs(os.path.dirname(USERS_FILE), exist_ok=True)
 
-# ── Request / Response models ──────────────────────────────────────────────────
-class AuthRequest(BaseModel):
-    email: str
+if not os.path.exists(USERS_FILE):
+    with open(USERS_FILE, "w") as f:
+        json.dump({}, f)
+
+def get_users():
+    with open(USERS_FILE, "r") as f:
+        return json.load(f)
+
+def save_users(users):
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f)
+
+# In-memory OTP storage (email -> {otp, expires_at})
+otp_store = {}
+
+# --- Models ---
+class UserSignUp(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
     password: str
 
+class VerifyOTP(BaseModel):
+    email: EmailStr
+    otp: str
 
-class AuthResponse(BaseModel):
+class Token(BaseModel):
     access_token: str
-    token_type: str = "bearer"
-    user_id: str
+    token_type: str
     email: str
 
+# --- Helpers ---
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
-# ── Helper ─────────────────────────────────────────────────────────────────────
-def _require_supabase():
-    if not is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Supabase is not configured. "
-                "Set SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_KEY "
-                "in backend/.env to enable authentication."
-            ),
-        )
-
-
-# ── Auth dependency (reusable in other routes) ─────────────────────────────────
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-):
-    """
-    FastAPI dependency — validate Bearer JWT and return the Supabase user.
-    Use as:  user = Depends(get_current_user)
-    Returns None when Supabase is disabled (allows unauthenticated access).
-    """
-    if not is_configured():
-        return None  # Auth disabled — allow through
-    if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Authorization header",
-        )
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    token = credentials.credentials
     try:
-        client = get_client()
-        result = client.auth.get_user(credentials.credentials)
-        if result is None or result.user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired token",
-            )
-        return result.user
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Token validation error: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token validation failed",
-        )
+        print(f"[DEBUG] Decoding token: {token[:10]}...")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            print("[DEBUG] Email not found in payload")
+            raise HTTPException(status_code=401, detail="Invalid token")
+        print(f"[DEBUG] Token valid for user: {email}")
+        return email
+    except JWTError as e:
+        print(f"[DEBUG] JWT Decode Error: {str(e)}")
+        raise HTTPException(status_code=401, detail="Invalid token")
 
+# --- Routes ---
 
-# ── Endpoints ──────────────────────────────────────────────────────────────────
-@router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def signup(body: AuthRequest):
-    """Register a new user via Supabase Auth."""
-    _require_supabase()
-    try:
-        client = get_client()
-        res = client.auth.sign_up({"email": body.email, "password": body.password})
-        if res.user is None:
-            raise HTTPException(400, "Sign-up failed — check the email/password.")
-        # Session may be None if email confirmation is required
-        token = res.session.access_token if res.session else ""
-        return AuthResponse(
-            access_token=token,
-            user_id=str(res.user.id),
-            email=res.user.email or body.email,
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Signup error: %s", exc)
-        raise HTTPException(400, str(exc))
+@router.post("/signup")
+async def signup(user: UserSignUp):
+    users = get_users()
+    if user.email in users:
+        raise HTTPException(status_code=400, detail="User already exists")
+    
+    otp = str(random.randint(100000, 999999))
+    otp_store[user.email] = {
+        "otp": otp,
+        "name": user.name,
+        "password_hash": pwd_context.hash(user.password),
+        "expires_at": time.time() + 600 # 10 minutes
+    }
+    
+    print(f"[DEBUG] Generated OTP for {user.email}: {otp}")
+    if send_otp_email(user.email, otp):
+        return {"message": "OTP sent to email"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to send OTP")
 
+@router.post("/verify-signup")
+async def verify_signup(data: VerifyOTP):
+    if data.email not in otp_store:
+        raise HTTPException(status_code=400, detail="No pending signup found")
+    
+    stored = otp_store[data.email]
+    if time.time() > stored["expires_at"]:
+        del otp_store[data.email]
+        raise HTTPException(status_code=400, detail="OTP expired")
+    
+    if stored["otp"] != data.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    # Create user
+    users = get_users()
+    users[data.email] = {
+        "name": stored["name"],
+        "password": stored["password_hash"],
+        "created_at": datetime.utcnow().isoformat()
+    }
+    save_users(users)
+    
+    # Clean up
+    del otp_store[data.email]
+    
+    # Return token
+    access_token = create_access_token(
+        data={"sub": data.email},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer", "email": data.email, "name": users[data.email]["name"]}
 
-@router.post("/signin", response_model=AuthResponse)
-async def signin(body: AuthRequest):
-    """Sign in and return a JWT access token."""
-    _require_supabase()
-    try:
-        client = get_client()
-        res = client.auth.sign_in_with_password(
-            {"email": body.email, "password": body.password}
-        )
-        if res.session is None:
-            raise HTTPException(401, "Invalid credentials.")
-        return AuthResponse(
-            access_token=res.session.access_token,
-            user_id=str(res.user.id),
-            email=res.user.email or body.email,
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.error("Signin error: %s", exc)
-        raise HTTPException(401, "Authentication failed.")
+@router.post("/login")
+async def login(user: UserLogin):
+    users = get_users()
+    if user.email not in users:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    user_data = users[user.email]
+    if not pwd_context.verify(user.password, user_data["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer", "email": user.email, "name": user_data["name"]}
 
+@router.post("/verify-login")
+async def verify_login(data: VerifyOTP):
+    if data.email not in otp_store:
+        raise HTTPException(status_code=400, detail="No pending login found")
+    
+    stored = otp_store[data.email]
+    if time.time() > stored["expires_at"]:
+        del otp_store[data.email]
+        raise HTTPException(status_code=400, detail="OTP expired")
+    
+    if stored["otp"] != data.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    # Clean up
+    del otp_store[data.email]
+    
+    # Return token
+    access_token = create_access_token(
+        data={"sub": data.email},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    # Note: Login currently doesn't use OTP but we keep this for consistency if needed later
+    users = get_users()
+    return {"access_token": access_token, "token_type": "bearer", "email": data.email, "name": users[data.email]["name"]}
+
+@router.post("/resend-otp")
+async def resend_otp(data: dict):
+    email = data.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    
+    # Check if there is an existing session
+    if email not in otp_store:
+        raise HTTPException(status_code=400, detail="No active session. Please start over.")
+    
+    # Generate new OTP
+    otp = str(random.randint(100000, 999999))
+    otp_store[email]["otp"] = otp
+    otp_store[email]["expires_at"] = time.time() + 600
+    
+    if send_otp_email(email, otp):
+        return {"message": "New OTP sent to email"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to send OTP")
 
 @router.get("/me")
-async def me(user=Depends(get_current_user)):
-    """Return the currently authenticated user's info."""
-    _require_supabase()
-    if user is None:
-        raise HTTPException(401, "Not authenticated")
-    return {
-        "user_id": str(user.id),
-        "email": user.email,
-        "created_at": str(user.created_at),
-    }
+async def me(email: str = Depends(get_current_user)):
+    users = get_users()
+    user_data = users.get(email, {})
+    return {"email": email, "name": user_data.get("name", "")}

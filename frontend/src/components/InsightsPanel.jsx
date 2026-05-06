@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Clapperboard, MessageSquare, Users, RefreshCw, Send, AlertTriangle, Lightbulb, Calendar, Info, CornerDownRight } from 'lucide-react';
 
-const API = 'http://127.0.0.1:8000/api/v1';
+import API_BASE_URL from '../config';
+
+const API = `${API_BASE_URL}/api/v1`;
 
 const DIFFICULTY_COLORS = {
   Easy: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
@@ -96,7 +98,10 @@ export default function InsightsPanel({ analysis, selectedScene }) {
     if (overallData) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/insights`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API}/insights`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setOverallData(await res.json());
     } catch (e) {
       setOverallData({ error: e.message });
@@ -108,7 +113,10 @@ export default function InsightsPanel({ analysis, selectedScene }) {
     if (!num) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/insights/${num}`);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API}/insights/${num}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setSceneData(prev => ({ ...prev, [num]: data }));
     } catch (e) {
@@ -131,9 +139,13 @@ export default function InsightsPanel({ analysis, selectedScene }) {
         max_budget = Math.max(2000, currentSceneData.budget * 0.15);
       }
       
+      const token = localStorage.getItem('token');
       const res = await fetch(`${API}/match-creators`, { 
           method: 'POST', 
-          headers: { 'Content-Type': 'application/json' }, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }, 
           body: JSON.stringify({ script_requirements: { keywords: keywords, max_budget_usd: max_budget } }) 
       });
       
@@ -168,8 +180,13 @@ export default function InsightsPanel({ analysis, selectedScene }) {
     setChatLoading(true);
 
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${API}/insights/chat`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ messages: newHistory, selected_scene_id: selectedScene || null })
       });
       const data = await res.json();

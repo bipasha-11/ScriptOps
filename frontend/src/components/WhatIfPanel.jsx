@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, Settings, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
-const API = 'http://localhost:8000/api/v1';
+import API_BASE_URL from '../config';
+
+const API = `${API_BASE_URL}/api/v1`;
 const FEATURE_LIST = ['crowd', 'vfx', 'stunt', 'night', 'rain', 'vehicle', 'weapon', 'animal'];
 
 export default function WhatIfPanel({ scenes, selectedScene }) {
@@ -33,9 +35,13 @@ export default function WhatIfPanel({ scenes, selectedScene }) {
       if (dayNight) body.day_night = dayNight;
       if (numChars !== '') body.num_characters = parseInt(numChars) || 0;
 
+      const token = localStorage.getItem('token');
       const res = await fetch(`${API}/whatif/${scene.scene_number}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(body),
       });
       const data = await res.json();

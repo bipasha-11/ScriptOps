@@ -1,3 +1,8 @@
-﻿fastapi
-uvicorn
+fastapi
+uvicorn[standard]
 python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+sendgrid
+email-validator

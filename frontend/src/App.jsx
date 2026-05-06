@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LandingExperience from './components/LandingExperience';
 import SummaryCards from './components/SummaryCards';
@@ -11,14 +11,81 @@ import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import SettingsPanel from './components/SettingsPanel';
 import DashboardSkeleton from './components/DashboardSkeleton';
+import Auth from './components/Auth';
+import API_BASE_URL from './config';
 
 function App() {
   const [analysis, setAnalysis] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [userName, setUserName] = useState(localStorage.getItem('userName'));
+  const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail'));
+
+  const handleLogin = (data) => {
+    console.log("Login successful, updating state:", data);
+    setIsAuthenticated(true);
+    setShowAuthModal(false);
+    setUserName(data.name);
+    setUserEmail(data.email);
+  };
+
+  const handleLogout = () => {
+    console.log("Logging out...");
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+    setIsAuthenticated(false);
+    setUserName(null);
+    setUserEmail(null);
+    setAnalysis(null);
+    // Force a state reset
+    window.location.reload();
+  };
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem('token');
+      if (token && (isAuthenticated || !userName || userName === 'undefined')) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (res.status === 401) {
+            console.warn("Session expired or invalid, logging out.");
+            handleLogout();
+            return;
+          }
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.name) {
+              setUserName(data.name);
+              localStorage.setItem('userName', data.name);
+            }
+            if (data.email) {
+              setUserEmail(data.email);
+              localStorage.setItem('userEmail', data.email);
+            }
+            setIsAuthenticated(true);
+          }
+        } catch (e) {
+          console.error("Profile fetch failed", e);
+        }
+      }
+    };
+    fetchProfile();
+  }, [isAuthenticated]);
 
   const handleFileDrop = async (file) => {
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+
     setIsAnalyzing(true);
     // Smooth scroll to top in case they uploaded from the bottom of the landing page
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -26,17 +93,44 @@ function App() {
     try {
       const form = new FormData();
       form.append('script', file);
-      const res = await fetch(`http://localhost:8000/api/v1/upload`, { method: 'POST', body: form });
+      const token = localStorage.getItem('token');
+      
+      const res = await fetch(`${API_BASE_URL}/api/v1/upload`, { 
+        method: 'POST', 
+        body: form,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (res.status === 401) {
+        handleLogout();
+        setShowAuthModal(true);
+        throw new Error('Session expired. Please login again.');
+      }
+      
       if (!res.ok) throw new Error('Upload failed');
       
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const analysisRes = await fetch(`http://localhost:8000/api/v1/analysis`);
+      const analysisRes = await fetch(`${API_BASE_URL}/api/v1/analysis`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (analysisRes.status === 401) {
+        handleLogout();
+        setShowAuthModal(true);
+        throw new Error('Session expired');
+      }
+
       const data = await analysisRes.json();
       setAnalysis(data);
       setSelectedScene(null);
     } catch (e) {
       console.error(e);
+      alert(e.message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -47,13 +141,22 @@ function App() {
   return (
     <div className="min-h-screen bg-primary text-slate-200 flex font-sans selection:bg-accent/30 selection:text-white overflow-hidden">
       
+      {/* Gated Auth Experience */}
+      {showAuthModal && (
+        <Auth onLogin={handleLogin} onCancel={() => setShowAuthModal(false)} />
+      )}
+
       {showChrome && (
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
+        <Sidebar 
+          isCollapsed={isSidebarCollapsed} 
+          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+          onLogout={handleLogout}
+        />
       )}
       
       <div className={`flex-1 flex flex-col relative min-w-0 transition-all duration-300 ease-in-out ${showChrome ? (isSidebarCollapsed ? 'ml-20 w-[calc(100%-5rem)]' : 'ml-64 w-[calc(100%-16rem)]') : 'w-full ml-0'}`}>
         
-        {showChrome && <TopBar />}
+        {showChrome && <TopBar onLogout={handleLogout} />}
         
         <main className={`flex-1 w-full mx-auto relative ${showChrome ? 'p-8 max-w-[1600px]' : 'p-0 max-w-none'}`}>
            <AnimatePresence mode="wait">
@@ -67,7 +170,14 @@ function App() {
                  exit={{ opacity: 0, y: -50 }} 
                  transition={{ duration: 0.5 }} 
                >
-                  <LandingExperience onFileSelect={handleFileDrop} />
+                  <LandingExperience 
+                    onFileSelect={handleFileDrop} 
+                    onAuthClick={() => setShowAuthModal(true)} 
+                    isAuthenticated={isAuthenticated}
+                    userEmail={userEmail}
+                    userName={userName}
+                    onLogout={handleLogout}
+                  />
                </motion.div>
              )}
 

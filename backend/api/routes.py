@@ -13,6 +13,8 @@ from ..models.schemas import (
     UploadResponse, AnalysisResponse, WhatIfRequest, WhatIfResponse,
     ChatRequest, ChatResponse, MatchRequest, MatchResponse
 )
+from .auth import get_current_user
+from fastapi import Depends
 
 router = APIRouter(prefix="/api/v1")
 
@@ -51,7 +53,7 @@ def _get_analysis_summary() -> dict:
 
 # ── Upload ────────────────────────────────────────────────────────────────────
 @router.post("/upload", response_model=UploadResponse)
-async def upload_script(script: UploadFile = File(...)):
+async def upload_script(script: UploadFile = File(...), user=Depends(get_current_user)):
     """Upload a script file (PDF or text) and process it."""
     if not script.filename:
         raise HTTPException(400, "No file provided")
@@ -89,7 +91,7 @@ async def upload_script(script: UploadFile = File(...)):
 
 # ── Scenes ────────────────────────────────────────────────────────────────────
 @router.get("/scenes")
-async def get_scenes():
+async def get_scenes(user=Depends(get_current_user)):
     """Return all parsed and analyzed scenes."""
     if not _store["scenes"]:
         raise HTTPException(404, "No script uploaded yet")
@@ -97,7 +99,7 @@ async def get_scenes():
 
 
 @router.get("/scenes/{scene_id}")
-async def get_scene(scene_id: int):
+async def get_scene(scene_id: int, user=Depends(get_current_user)):
     """Return a single scene by scene_number."""
     for s in _store["scenes"]:
         if s["scene_number"] == scene_id:
@@ -107,7 +109,7 @@ async def get_scene(scene_id: int):
 
 # ── Analysis ──────────────────────────────────────────────────────────────────
 @router.get("/analysis")
-async def get_analysis():
+async def get_analysis(user=Depends(get_current_user)):
     """Return the full analysis with all scenes and summary stats."""
     if not _store["scenes"]:
         raise HTTPException(404, "No script uploaded yet")
@@ -116,7 +118,7 @@ async def get_analysis():
 
 # ── What-If ───────────────────────────────────────────────────────────────────
 @router.post("/whatif/{scene_id}", response_model=WhatIfResponse)
-async def whatif_scene(scene_id: int, body: WhatIfRequest):
+async def whatif_scene(scene_id: int, body: WhatIfRequest, user=Depends(get_current_user)):
     """Simulate what-if modifications on a scene."""
     original = None
     for s in _store["scenes"]:
@@ -133,7 +135,7 @@ async def whatif_scene(scene_id: int, body: WhatIfRequest):
 
 # ── LLM Insights ─────────────────────────────────────────────────────────────
 @router.get("/insights")
-async def get_overall_insights():
+async def get_overall_insights(user=Depends(get_current_user)):
     """Generate LLM-powered overall script insights."""
     if not _store["scenes"]:
         raise HTTPException(404, "No script uploaded yet")
@@ -143,7 +145,7 @@ async def get_overall_insights():
 
 
 @router.get("/insights/{scene_id}")
-async def get_scene_insight(scene_id: int):
+async def get_scene_insight(scene_id: int, user=Depends(get_current_user)):
     """Generate LLM-powered insight for a single scene."""
     for s in _store["scenes"]:
         if s["scene_number"] == scene_id:
@@ -152,7 +154,7 @@ async def get_scene_insight(scene_id: int):
     raise HTTPException(404, f"Scene {scene_id} not found")
 
 @router.post("/insights/chat", response_model=ChatResponse)
-async def chat_interaction(body: ChatRequest):
+async def chat_interaction(body: ChatRequest, user=Depends(get_current_user)):
     """Send message to LLM directly."""
     if not _store["scenes"]:
         raise HTTPException(404, "No script uploaded yet")
@@ -168,7 +170,7 @@ async def chat_interaction(body: ChatRequest):
 
 # ── Talent Matching ──────────────────────────────────────────────────────────
 @router.post("/match-creators", response_model=MatchResponse)
-async def match_creators_endpoint(body: MatchRequest):
+async def match_creators_endpoint(body: MatchRequest, user=Depends(get_current_user)):
     """
     Score and rank creators against script requirements.
     Uses HuggingFace SentenceTransformers ML over the technicians CSV dataset.

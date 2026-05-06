@@ -40,7 +40,7 @@ const ScrollWalker = ({ direction = "right" }) => {
   );
 };
 
-export default function LandingExperience({ onFileSelect }) {
+export default function LandingExperience({ onFileSelect, onAuthClick, isAuthenticated, userEmail, userName, onLogout }) {
   const containerRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: containerRef });
 
@@ -71,6 +71,19 @@ export default function LandingExperience({ onFileSelect }) {
           viewport={{ once: true }}
           className="max-w-4xl w-full flex flex-col items-center text-center gap-6"
         >
+           {/* Welcome Message Above Heading */}
+           {isAuthenticated && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }} 
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-[-1.5rem] flex flex-col items-center gap-2"
+              >
+                <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-white uppercase">
+                  Welcome <span className="text-accent">{userName && userName !== 'undefined' ? userName : 'Bipasha'}</span>
+                </h2>
+              </motion.div>
+           )}
+
            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, duration: 1 }}>
              <h1 className="text-6xl md:text-8xl lg:text-[7rem] font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-white via-slate-200 to-slate-600 pb-2">
                ScriptOps
@@ -79,6 +92,17 @@ export default function LandingExperience({ onFileSelect }) {
            <p className="text-xl md:text-2xl text-slate-400 font-light max-w-2xl leading-relaxed">
              The cinematic intelligence engine. Scroll to discover how we simulate the reality of physical production before the cameras roll.
            </p>
+
+           <div className="flex flex-col items-center gap-4 mt-4">
+              {!isAuthenticated && (
+                <button 
+                  onClick={onAuthClick}
+                  className="px-10 py-4 bg-accent hover:bg-accent-light text-white font-black rounded-full shadow-xl shadow-accent/20 transition-all active:scale-95 uppercase tracking-[0.2em] text-xs"
+                >
+                  Sign In / Register
+                </button>
+              )}
+           </div>
         </motion.div>
         
         {/* Scroll Indicator */}

@@ -1,7 +1,7 @@
-import { LayoutDashboard, FileText, Users, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 import { useState } from 'react';
 
-export default function Sidebar({ isCollapsed, onToggle }) {
+export default function Sidebar({ isCollapsed, onToggle, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const handleNavClick = (id) => {
@@ -47,7 +47,7 @@ export default function Sidebar({ isCollapsed, onToggle }) {
         })}
       </nav>
       
-      {/* Bottom Profile Hint */}
+      {/* Bottom Control Hint */}
       {!isCollapsed ? (
         <div className="p-4 border-t border-white/5 flex flex-col gap-3">
           <div className="glass rounded-xl p-4 flex flex-col gap-2 text-center text-xs text-slate-400">
@@ -61,7 +61,7 @@ export default function Sidebar({ isCollapsed, onToggle }) {
           </button>
         </div>
       ) : (
-        <div className="p-4 border-t border-white/5 flex justify-center">
+        <div className="p-4 border-t border-white/5 flex flex-col gap-2 items-center">
           <button onClick={onToggle} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors" title="Expand Sidebar">
             <ChevronRight size={18} />
           </button>
