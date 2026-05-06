@@ -14,25 +14,25 @@
 
 ---
 
-### 🖥️ Core Platform
-| Landing Page | Risk Heatmap |
-| :---: | :---: |
-| ![Landing Page](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/landing%20page.png) | ![Heatmap](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/heatmap.png) |
+### 🖥️ Core Platform & Dashboard
+| Landing Page | Welcome View | Production Heatmap |
+| :---: | :---: | :---: |
+| ![Landing Page](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/landing%20page.png) | ![Landing Page 2](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/landingpage2.png) | ![Heatmap](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/heatmap.png) |
 
-### 🤖 AI Intelligence & Insights
-| Script Analysis (UI1) | AI Production Assistant (Chat) |
-| :---: | :---: |
-| ![UI1](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui1.png) | ![Chatbot](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/chatbot.png) |
+### 🤖 AI Intelligence & Analysis
+| Analysis View (UI1) | Insights Panel (UI2) | Data Visualization (UI3) | AI Chatbot |
+| :---: | :---: | :---: | :---: |
+| ![UI1](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui1.png) | ![UI2](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui2.png) | ![UI3](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/ui3.png) | ![Chatbot](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/chatbot.png) |
 
-### 📂 Script & Upload Flow
-| Upload Script | My Scripts |
-| :---: | :---: |
-| ![Upload](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/upload.png) | ![Scripts](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/scripts.png) |
+### 📂 Script Management
+| Upload Screenplay | My Scripts Archive | Account Settings |
+| :---: | :---: | :---: |
+| ![Upload](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/upload.png) | ![Scripts](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/scripts.png) | ![Settings](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/settings.png) |
 
-### 🔐 Authentication
-| Sign In | OTP Verification |
-| :---: | :---: |
-| ![Sign In](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/signin.png) | ![OTP](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/otp.png) |
+### 🔐 Authentication Flow
+| Sign In | Create Account | OTP Verification |
+| :---: | :---: | :---: |
+| ![Sign In](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/signin.png) | ![Sign Up](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/signup.png) | ![OTP](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/otp.png) |
 
 ---
 
