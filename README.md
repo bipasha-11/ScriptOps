@@ -11,6 +11,7 @@
 ---
 
 ### 🔗 [Visit Live Application](https://scriptops.vercel.app/)
+### ⚙️ [API Documentation (Backend)](https://scriptops-1.onrender.com/docs)
 
 ---
 
