@@ -8,11 +8,11 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from ..core.mail import send_otp_email
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Removed passlib CryptContext due to bcrypt 4.0 compatibility issues
 bearer_scheme = HTTPBearer()
 
 # Configuration
@@ -92,14 +92,16 @@ async def signup(user: UserSignUp):
     if user.email in users:
         raise HTTPException(status_code=400, detail="User already exists")
     
-    # Bcrypt has a 72-byte limit for passwords. Truncate to ensure it doesn't crash.
-    safe_password = user.password[:72]
+    # Use native bcrypt to avoid passlib initialization bugs
+    password_bytes = user.password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    pwd_hash = bcrypt.hashpw(password_bytes[:72], salt).decode('utf-8')
     
     otp = str(random.randint(100000, 999999))
     otp_store[user.email] = {
         "otp": otp,
         "name": user.name,
-        "password_hash": pwd_context.hash(safe_password),
+        "password_hash": pwd_hash,
         "expires_at": time.time() + 600 # 10 minutes
     }
     
@@ -148,8 +150,9 @@ async def login(user: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     user_data = users[user.email]
-    # Bcrypt has a 72-byte limit
-    if not pwd_context.verify(user.password[:72], user_data["password"]):
+    # Use native bcrypt for verification
+    stored_hash = user_data["password_hash"].encode('utf-8') if "password_hash" in user_data else user_data.get("password", "").encode('utf-8')
+    if not bcrypt.checkpw(user.password.encode('utf-8')[:72], stored_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     access_token = create_access_token(
