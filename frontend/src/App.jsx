@@ -156,7 +156,7 @@ function App() {
       
       <div className={`flex-1 flex flex-col relative min-w-0 transition-all duration-300 ease-in-out ${showChrome ? (isSidebarCollapsed ? 'ml-20 w-[calc(100%-5rem)]' : 'ml-64 w-[calc(100%-16rem)]') : 'w-full ml-0'}`}>
         
-        {showChrome && <TopBar onLogout={handleLogout} />}
+        {showChrome && <TopBar onLogout={handleLogout} userName={userName} />}
         
         <main className={`flex-1 w-full mx-auto relative ${showChrome ? 'p-8 max-w-[1600px]' : 'p-0 max-w-none'}`}>
            <AnimatePresence mode="wait">

@@ -1,6 +1,6 @@
 import { Search, Bell, User, LogOut } from 'lucide-react';
 
-export default function TopBar({ onLogout }) {
+export default function TopBar({ onLogout, userName }) {
   return (
     <header className="h-20 bg-primary/95 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-10 sticky top-0 z-40 w-full shadow-sm">
        <div className="flex items-center bg-secondary/80 px-4 py-2.5 rounded-2xl border border-white/10 w-96 focus-within:border-accent/50 focus-within:ring-1 focus-within:ring-accent/50 transition-all">
@@ -23,7 +23,7 @@ export default function TopBar({ onLogout }) {
           
           <div className="flex items-center gap-4 pl-8 border-l border-white/10 cursor-pointer group">
              <div className="text-right hidden sm:block">
-               <p className="text-sm font-bold text-white tracking-wide">Director</p>
+               <p className="text-sm font-bold text-white tracking-wide">{userName || 'Creator'}</p>
                <p className="text-[0.7rem] text-accent uppercase font-bold tracking-wider">Pro Edition</p>
              </div>
              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-accent to-purple-400 p-[2px] shadow-[0_0_15px_rgba(124,58,237,0.3)] group-hover:shadow-[0_0_25px_rgba(124,58,237,0.6)] transition-all duration-300">
