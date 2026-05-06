@@ -54,6 +54,10 @@ def send_otp_email(recipient_email: str, otp: str) -> bool:
                 print(f"[MAIL] Unexpected status: {response.status}")
                 return False
 
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode()
+        print(f"[MAIL] SendGrid HTTP Error {e.code}: {error_body}")
+        return False
     except Exception as e:
         print(f"[MAIL] Error sending email: {e}")
         return False
