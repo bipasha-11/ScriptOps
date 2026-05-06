@@ -22,6 +22,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend as a package named 'backend'
 COPY backend/ ./backend/
 
+# Copy necessary assets from root
+COPY technicians_dataset_v2.csv ./
+
 # Copy built frontend into backend/static so FastAPI can serve it
 COPY --from=frontend-builder /app/frontend/dist ./backend/static
 
