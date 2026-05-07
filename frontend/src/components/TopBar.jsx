@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Bell, User, LogOut, Settings, Key, Cpu, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Search, Bell, User, LogOut, Settings, Key, Cpu, CheckCircle2, ChevronDown, Sliders } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function TopBar({ onLogout, userName }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('groq_api_key') || '');
+  const [riskThreshold, setRiskThreshold] = useState(parseInt(localStorage.getItem('risk_threshold')) || 50);
+  const [skillWeight, setSkillWeight] = useState(parseFloat(localStorage.getItem('skill_weight')) || 0.7);
+  const [socialWeight, setSocialWeight] = useState(parseFloat(localStorage.getItem('social_weight')) || 0.3);
   const [saved, setSaved] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -18,6 +21,9 @@ export default function TopBar({ onLogout, userName }) {
 
     const handleSync = () => {
       setApiKey(localStorage.getItem('groq_api_key') || '');
+      setRiskThreshold(parseInt(localStorage.getItem('risk_threshold')) || 50);
+      setSkillWeight(parseFloat(localStorage.getItem('skill_weight')) || 0.7);
+      setSocialWeight(parseFloat(localStorage.getItem('social_weight')) || 0.3);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -29,19 +35,38 @@ export default function TopBar({ onLogout, userName }) {
     };
   }, []);
 
-  const handleSaveKey = (val) => {
-    setApiKey(val);
-    localStorage.setItem('groq_api_key', val);
+  const showSaved = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-    // Notify other components
     window.dispatchEvent(new CustomEvent('config-update'));
   };
 
-  const scrollToSettings = () => {
-    const el = document.getElementById('settings');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-    setIsDropdownOpen(false);
+  const handleSaveKey = (val) => {
+    setApiKey(val);
+    localStorage.setItem('groq_api_key', val);
+    showSaved();
+  };
+
+  const handleThresholdChange = (val) => {
+    const v = parseInt(val);
+    setRiskThreshold(v);
+    localStorage.setItem('risk_threshold', v);
+    showSaved();
+  };
+
+  const handleWeightsChange = (skill, social) => {
+    setSkillWeight(skill);
+    setSocialWeight(social);
+    localStorage.setItem('skill_weight', skill);
+    localStorage.setItem('social_weight', social);
+    showSaved();
+  };
+
+  const getRiskLabel = (v) => {
+    if (v <= 30) return 'Tolerant';
+    if (v <= 50) return 'Standard';
+    if (v <= 70) return 'Conservative';
+    return 'Strict';
   };
 
   return (
@@ -79,8 +104,8 @@ export default function TopBar({ onLogout, userName }) {
                 >
                   <div className="flex flex-col gap-5">
                     <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                      <h3 className="text-white text-xs font-bold uppercase tracking-wider">Quick Configuration</h3>
-                      <button onClick={scrollToSettings} className="text-[10px] text-accent hover:underline font-bold uppercase">Advanced</button>
+                      <h3 className="text-white text-xs font-bold uppercase tracking-wider">System Configuration</h3>
+                      {saved && <span className="text-[10px] text-emerald-400 flex items-center gap-1 animate-pulse font-bold"><CheckCircle2 size={10} /> Syncing</span>}
                     </div>
 
                     {/* Model Select */}
@@ -88,34 +113,71 @@ export default function TopBar({ onLogout, userName }) {
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                         <Cpu size={12} className="text-accent" /> Intelligence Engine
                       </label>
-                      <select className="bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:ring-1 focus:ring-accent outline-none cursor-pointer">
-                        <option>Groq Llama 3 70B</option>
-                        <option>Gemini 2.0 Flash</option>
+                      <select className="bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-[11px] text-white focus:ring-1 focus:ring-accent outline-none cursor-pointer">
+                        <option>Groq Llama 3 70B (User Managed)</option>
+                        <option>Google Gemini 2.0 Flash</option>
                       </select>
                     </div>
 
                     {/* API Key Input */}
                     <div className="flex flex-col gap-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <Key size={12} className="text-accent" /> Groq API Key
-                        {saved && <span className="ml-auto text-emerald-400 flex items-center gap-1 animate-pulse"><CheckCircle2 size={10} /> Saved</span>}
-                      </label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Groq API Key</label>
                       <input 
                         type="password"
                         value={apiKey}
                         onChange={(e) => handleSaveKey(e.target.value)}
                         placeholder="gsk_..."
-                        className="bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:ring-1 focus:ring-accent outline-none font-mono"
+                        className="bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-[11px] text-white focus:ring-1 focus:ring-accent outline-none font-mono"
                       />
                     </div>
 
-                    <div className="pt-2">
-                      <button 
-                        onClick={scrollToSettings}
-                        className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-[10px] font-bold text-slate-400 uppercase tracking-widest transition-all"
-                      >
-                        More System Settings
-                      </button>
+                    {/* Risk Threshold */}
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex justify-between">
+                        <span>Risk Tolerance</span>
+                        <span className="text-accent">{riskThreshold}% ({getRiskLabel(riskThreshold)})</span>
+                      </label>
+                      <input 
+                        type="range" min="10" max="90" step="5"
+                        value={riskThreshold}
+                        onChange={(e) => handleThresholdChange(e.target.value)}
+                        className="accent-accent h-1 bg-white/10 rounded-full appearance-none cursor-pointer" 
+                      />
+                    </div>
+
+                    {/* Weights Divider */}
+                    <div className="border-t border-white/5 pt-3 mt-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-3">
+                        <Sliders size={12} className="text-blue-400" /> Matching Weights
+                      </label>
+                      
+                      <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-slate-400">Skill</span>
+                            <span className="text-blue-400">{Math.round(skillWeight * 100)}%</span>
+                          </div>
+                          <input 
+                            type="range" min="0" max="1" step="0.05"
+                            value={skillWeight}
+                            onChange={(e) => handleWeightsChange(parseFloat(e.target.value), 1 - parseFloat(e.target.value))}
+                            className="accent-blue-500 h-1 bg-white/10 rounded-full appearance-none cursor-pointer" 
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-slate-400">Social</span>
+                            <span className="text-green-400">{Math.round(socialWeight * 100)}%</span>
+                          </div>
+                          <input 
+                            type="range" min="0" max="1" step="0.05"
+                            value={socialWeight}
+                            onChange={(e) => handleWeightsChange(1 - parseFloat(e.target.value), parseFloat(e.target.value))}
+                            className="accent-green-500 h-1 bg-white/10 rounded-full appearance-none cursor-pointer" 
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </motion.div>

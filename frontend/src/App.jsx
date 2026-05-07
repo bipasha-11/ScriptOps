@@ -272,10 +272,6 @@ function App() {
                      </div>
                   </div>
 
-                  {/* System Configuration */}
-                  <div id="settings" className="w-full mt-4">
-                     <SettingsPanel />
-                  </div>
 
                </motion.div>
              )}

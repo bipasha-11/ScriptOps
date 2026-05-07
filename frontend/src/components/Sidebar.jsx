@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, Users, Settings, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings, ChevronLeft, ChevronRight, LogOut, Download, Database, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Sidebar({ isCollapsed, onToggle, onLogout }) {
@@ -26,7 +26,6 @@ export default function Sidebar({ isCollapsed, onToggle, onLogout }) {
         {[ {icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard'},
            {icon: FileText, label: 'Scripts', id: 'scripts'},
            {icon: Users, label: 'Crew Match', id: 'crew'},
-           {icon: Settings, label: 'Settings', id: 'settings'}
          ].map(item => {
            const isActive = activeTab === item.id;
            return (
@@ -45,6 +44,22 @@ export default function Sidebar({ isCollapsed, onToggle, onLogout }) {
              </div>
            );
         })}
+
+        {/* Data Options in Sidebar */}
+        {!isCollapsed && (
+          <div className="mt-8 flex flex-col gap-2 px-2">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-3">Output & Data</p>
+            <button className="flex items-center gap-3 w-full p-3 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left">
+              <Download size={16} className="text-emerald-400" /> Export Full PDF
+            </button>
+            <button className="flex items-center gap-3 w-full p-3 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left">
+              <Database size={16} className="text-blue-400" /> Download .FDX
+            </button>
+            <button className="flex items-center gap-3 w-full p-3 rounded-xl text-xs font-bold text-slate-500 hover:text-red-400 hover:bg-red-400/5 transition-all text-left mt-2">
+              <Trash2 size={16} /> Purge Data
+            </button>
+          </div>
+        )}
       </nav>
       
       {/* Bottom Control Hint */}
@@ -56,6 +71,10 @@ export default function Sidebar({ isCollapsed, onToggle, onLogout }) {
         </div>
       ) : (
         <div className="p-4 border-t border-white/5 flex flex-col gap-2 items-center">
+          <div className="flex flex-col gap-4 mb-4">
+            <Download size={18} className="text-slate-500 hover:text-emerald-400 cursor-pointer" title="Export PDF" />
+            <Database size={18} className="text-slate-500 hover:text-blue-400 cursor-pointer" title="Download FDX" />
+          </div>
           <button onClick={onToggle} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors" title="Expand Sidebar">
             <ChevronRight size={18} />
           </button>
