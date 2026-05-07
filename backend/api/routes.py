@@ -86,15 +86,21 @@ async def upload_script(script: UploadFile = File(...), email: str = Depends(get
         enriched = analyze_scene(raw_scene)
         enriched = analyze_risk_and_cost(enriched)
         
+        # Determine scene type string for DB
+        stype = "INT" if enriched["scene_type"]["interior"] else "EXT"
+        if enriched["scene_type"]["exterior"] and enriched["scene_type"]["interior"]:
+            stype = "INT/EXT"
+        
         # Split enriched into DB fields and JSON metadata
-        meta = {k: v for k, v in enriched.items() if k not in ["scene_number", "slugline", "scene_type", "content", "risk_score", "budget"]}
+        # We map heading -> slugline and body -> content
+        meta = {k: v for k, v in enriched.items() if k not in ["scene_number", "heading", "body", "scene_type", "risk_score", "budget"]}
         
         db_scene = Scene(
             project_id=new_project.id,
             scene_number=enriched["scene_number"],
-            slugline=enriched["slugline"],
-            scene_type=enriched["scene_type"],
-            content=enriched["content"],
+            slugline=enriched["heading"],
+            scene_type=stype,
+            content=enriched["body"],
             risk_score=enriched["risk_score"],
             budget=enriched["budget"],
             metadata_json=meta
