@@ -1,10 +1,36 @@
-import { Search, Bell, User, LogOut, Settings } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, Bell, User, LogOut, Settings, Key, Cpu, CheckCircle2, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function TopBar({ onLogout, userName }) {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [apiKey, setApiKey] = useState(localStorage.getItem('groq_api_key') || '');
+  const [saved, setSaved] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const handleSaveKey = (val) => {
+    setApiKey(val);
+    localStorage.setItem('groq_api_key', val);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
   const scrollToSettings = () => {
     const el = document.getElementById('settings');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
+    setIsDropdownOpen(false);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="h-20 bg-primary/95 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-10 sticky top-0 z-40 w-full shadow-sm">
@@ -18,13 +44,72 @@ export default function TopBar({ onLogout, userName }) {
        </div>
        
        <div className="flex items-center gap-8">
-          <button 
-            onClick={scrollToSettings}
-            className="flex items-center gap-2 text-slate-400 hover:text-accent transition-colors text-sm font-bold uppercase tracking-widest group"
-          >
-             <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" /> 
-             <span className="hidden lg:inline">System Config</span>
-          </button>
+          {/* System Config Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button 
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all text-sm font-bold uppercase tracking-widest group
+                ${isDropdownOpen ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'text-slate-400 hover:text-accent'}
+              `}
+            >
+               <Settings size={18} className={`${isDropdownOpen ? 'rotate-90' : 'group-hover:rotate-45'} transition-transform duration-500`} /> 
+               <span className="hidden lg:inline">System Config</span>
+               <ChevronDown size={14} className={`ml-1 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+              {isDropdownOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-3 w-80 glass border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 p-5"
+                >
+                  <div className="flex flex-col gap-5">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                      <h3 className="text-white text-xs font-bold uppercase tracking-wider">Quick Configuration</h3>
+                      <button onClick={scrollToSettings} className="text-[10px] text-accent hover:underline font-bold uppercase">Advanced</button>
+                    </div>
+
+                    {/* Model Select */}
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Cpu size={12} className="text-accent" /> Intelligence Engine
+                      </label>
+                      <select className="bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:ring-1 focus:ring-accent outline-none cursor-pointer">
+                        <option>Groq Llama 3 70B</option>
+                        <option>Gemini 2.0 Flash</option>
+                      </select>
+                    </div>
+
+                    {/* API Key Input */}
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Key size={12} className="text-accent" /> Groq API Key
+                        {saved && <span className="ml-auto text-emerald-400 flex items-center gap-1 animate-pulse"><CheckCircle2 size={10} /> Saved</span>}
+                      </label>
+                      <input 
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => handleSaveKey(e.target.value)}
+                        placeholder="gsk_..."
+                        className="bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-xs text-white focus:ring-1 focus:ring-accent outline-none font-mono"
+                      />
+                    </div>
+
+                    <div className="pt-2">
+                      <button 
+                        onClick={scrollToSettings}
+                        className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-[10px] font-bold text-slate-400 uppercase tracking-widest transition-all"
+                      >
+                        More System Settings
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <button onClick={onLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-sm font-bold uppercase tracking-widest">
              <LogOut size={18} /> Logout
