@@ -103,19 +103,27 @@ async def generate_scene_insight(scene: dict, api_key: str = None) -> dict:
         return _fallback_scene_insight(scene)
 
     try:
-        active_features = [k for k, v in scene["features"].items() if v]
+        features = scene.get("features", {})
+        active_features = [k for k, v in features.items() if v]
+        
+        # Handle naming variations between API and Core
+        heading = scene.get("heading") or scene.get("slugline") or "Untitled Scene"
+        body = scene.get("body") or scene.get("content") or ""
+        stype_dict = scene.get("scene_type") if isinstance(scene.get("scene_type"), dict) else {}
+        stype_str = scene.get("scene_type") if isinstance(scene.get("scene_type"), str) else "UNKNOWN"
+
         prompt = SCENE_INSIGHT_PROMPT.format(
-            scene_number=scene["scene_number"],
-            heading=scene["heading"],
+            scene_number=scene.get("scene_number", "?"),
+            heading=heading,
             location=scene.get("location", "Unknown"),
-            setting=f"{'INT' if scene['scene_type']['interior'] else 'EXT'} / {scene['scene_type']['day_night']}",
+            setting=f"{'INT' if stype_dict.get('interior') or 'INT' in stype_str else 'EXT'} / {stype_dict.get('day_night') or stype_str}",
             num_characters=scene.get("num_characters", 0),
             characters=", ".join(scene.get("characters", [])) or "None detected",
             features_str=", ".join(active_features) or "None",
             risk_score=scene.get("risk_score", 0),
             risk_level=scene.get("risk_level", "LOW"),
             budget=scene.get("budget", 0),
-            excerpt=scene.get("body", "")[:500],
+            excerpt=body[:500],
         )
         
         response = await client.chat.completions.create(
@@ -136,10 +144,10 @@ async def generate_overall_insight(analysis: dict, api_key: str = None) -> dict:
         return _fallback_overall_insight(analysis)
 
     try:
-        scenes = analysis["scenes"]
-        sorted_risky = sorted(scenes, key=lambda s: s["risk_score"], reverse=True)[:5]
+        scenes = analysis.get("scenes", [])
+        sorted_risky = sorted(scenes, key=lambda s: s.get("risk_score", 0), reverse=True)[:5]
         top_risky = "\n".join(
-            f"  - Scene #{s['scene_number']}: {s['heading']} (Risk: {s['risk_score']}, Budget: ${s['budget']:,})"
+            f"  - Scene #{s.get('scene_number', '?')}: {s.get('heading') or s.get('slugline') or 'Untitled Scene'} (Risk: {s.get('risk_score', 0)}, Budget: ${s.get('budget', 0):,})"
             for s in sorted_risky
         )
         freq = {}
@@ -184,11 +192,13 @@ async def chat_with_script(analysis: dict, messages: list, selected_scene_id: in
     if selected_scene_id:
         scene = next((s for s in analysis.get('scenes', []) if s['scene_number'] == selected_scene_id), None)
         if scene:
-            context += f"\nCurrently focusing on Scene #{scene['scene_number']}: {scene['heading']}\n"
-            context += f"Risk Score: {scene['risk_score']}/100\n"
-            context += f"Budget: ${scene['budget']:,}\n"
+            heading = scene.get('heading') or scene.get('slugline') or 'Untitled Scene'
+            body = scene.get('body') or scene.get('content') or ''
+            context += f"\nCurrently focusing on Scene #{scene.get('scene_number', '?')}: {heading}\n"
+            context += f"Risk Score: {scene.get('risk_score', 0)}/100\n"
+            context += f"Budget: ${scene.get('budget', 0):,}\n"
             context += f"Characters: {', '.join(scene.get('characters', []))}\n"
-            context += f"Excerpt: {scene.get('body', '')[:800]}\n"
+            context += f"Excerpt: {body[:800]}\n"
 
     system_prompt = "You are an expert film production assistant. You are helping the user analyze a script breakdown and cost/risk estimates. Use the provided context to answer their questions. Keep answers concise and helpful.\n\nContext:\n" + context
 
@@ -219,7 +229,7 @@ def _fallback_scene_insight(scene: dict) -> dict:
     risk = scene.get("risk_score", 0)
     difficulty = "Easy" if risk < 30 else "Medium" if risk < 50 else "Hard" if risk < 70 else "Extreme"
     return {
-        "summary": f"Scene #{scene['scene_number']} at {scene.get('location', 'unknown location')}. Features: {', '.join(active) or 'standard setup'}.",
+        "summary": f"Scene #{scene.get('scene_number', '?')} at {scene.get('location', 'unknown location')}. Features: {', '.join(active) or 'standard setup'}.",
         "top_risks": [{"risk": f, "mitigation": f"Plan for {f} requirements"} for f in active[:3]],
         "cost_optimizations": ["Consider combining with adjacent scenes at same location"],
         "difficulty": difficulty,

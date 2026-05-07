@@ -30,16 +30,16 @@ origins = [
     "http://localhost:5173",
     "http://localhost:3000",
     "https://scriptops.vercel.app",
-    "https://scriptops-1.onrender.com",
 ]
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
-if FRONTEND_URL and FRONTEND_URL not in origins:
+if FRONTEND_URL:
     origins.append(FRONTEND_URL.rstrip("/"))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex="https://scriptops-.*\.vercel\.app", # Allow Vercel previews
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
