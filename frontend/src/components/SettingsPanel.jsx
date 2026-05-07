@@ -8,10 +8,20 @@ export default function SettingsPanel() {
   const [socialWeight, setSocialWeight] = useState(parseFloat(localStorage.getItem('social_weight')) || 0.3);
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    const handleSync = () => {
+      setApiKey(localStorage.getItem('groq_api_key') || '');
+    };
+    window.addEventListener('config-update', handleSync);
+    return () => window.removeEventListener('config-update', handleSync);
+  }, []);
+
   const handleSaveKey = (val) => {
     setApiKey(val);
     localStorage.setItem('groq_api_key', val);
     showSaved();
+    // Notify other components
+    window.dispatchEvent(new CustomEvent('config-update'));
   };
 
   const handleThresholdChange = (val) => {

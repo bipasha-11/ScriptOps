@@ -8,19 +8,6 @@ export default function TopBar({ onLogout, userName }) {
   const [saved, setSaved] = useState(false);
   const dropdownRef = useRef(null);
 
-  const handleSaveKey = (val) => {
-    setApiKey(val);
-    localStorage.setItem('groq_api_key', val);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const scrollToSettings = () => {
-    const el = document.getElementById('settings');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-    setIsDropdownOpen(false);
-  };
-
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -28,9 +15,34 @@ export default function TopBar({ onLogout, userName }) {
         setIsDropdownOpen(false);
       }
     };
+
+    const handleSync = () => {
+      setApiKey(localStorage.getItem('groq_api_key') || '');
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('config-update', handleSync);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('config-update', handleSync);
+    };
   }, []);
+
+  const handleSaveKey = (val) => {
+    setApiKey(val);
+    localStorage.setItem('groq_api_key', val);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    // Notify other components
+    window.dispatchEvent(new CustomEvent('config-update'));
+  };
+
+  const scrollToSettings = () => {
+    const el = document.getElementById('settings');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    setIsDropdownOpen(false);
+  };
 
   return (
     <header className="h-20 bg-primary/95 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-10 sticky top-0 z-40 w-full shadow-sm">
