@@ -39,8 +39,8 @@ if FRONTEND_URL not in origins and FRONTEND_URL != "*":
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if FRONTEND_URL == "*" else origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
