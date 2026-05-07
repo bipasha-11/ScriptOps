@@ -2,9 +2,9 @@
 
 **ScriptOps** is an advanced, full-stack application designed to revolutionize film pre-production. It analyzes screenplay text, automatically splits it into scenes, extracts logistical features (VFX, stunts, locations), calculates budget and risk estimates, and provides actionable insights powered by **Groq** and the **LLaMA 3.3** model.
 
-![Stack](https://img.shields.io/badge/Stack-React_|_FastAPI_|_Docker-blue)
+![Stack](https://img.shields.io/badge/Stack-React_|_FastAPI_|_PostgreSQL-blue)
 ![AI](https://img.shields.io/badge/AI-Groq_LLaMA_3.3-orange)
-![Mail](https://img.shields.io/badge/Mail-SendGrid_API-green)
+![DB](https://img.shields.io/badge/Database-Neon_PostgreSQL-00E699)
 ![Deployment](https://img.shields.io/badge/Deployment-Render_|_Vercel-purple)
 ![Live](https://img.shields.io/badge/Live_Demo-ScriptOps-brightgreen?logo=vercel&link=https://scriptops.vercel.app/)
 
@@ -29,7 +29,7 @@ The ScriptOps landing page guides users through the core value propositions of A
 ---
 
 ### 🔐 User Onboarding (Authentication)
-A secure, streamlined entry point featuring real-time email verification.
+A secure, streamlined entry point featuring real-time email verification and **persistent PostgreSQL storage**.
 
 | Sign In | Create Account | OTP Verification |
 | :---: | :---: | :---: |
@@ -52,54 +52,58 @@ The heart of the application, where data meets production strategy.
 
 ### 🚀 Key Features
 - **Automated Script Parsing**: Upload screenplays (`.txt`/`.pdf`) for instant scene tokenization and location extraction.
-- **Risk & Budget Estimation**: Algorithmically detects high-risk elements (stunts, VFX, etc.) and calculates production difficulty scores.
-- **What-If Simulator**: Tweak scene parameters and watch estimated budgets recalculate in real-time.
+- **Persistent Data Storage**: All users, projects, and analyses are saved in a **Neon PostgreSQL** database for long-term accessibility.
+- **Real-Time Simulation**: Tweak risk tolerance and crew matching weights via the new **System Config** dropdown to watch budgets recalculate instantly.
+- **One-Click Exports**: Professional **PDF Reports** and **Final Draft (.FDX)** exports generated on-demand.
 - **AI Production Assistant**: A context-aware chatbot (Powered by Groq) for deep script analysis and cost optimization.
 
 ---
 
 ## 💾 Data Architecture
-The system uses a lightweight JSON-based storage for user management and script metadata, designed for zero-latency in-memory operations.
+ScriptOps utilizes a robust relational database schema managed by **SQLAlchemy** to ensure data integrity and persistence.
 
 ```mermaid
 erDiagram
-    USER ||--o{ SCRIPT : "manages"
+    USER ||--o{ PROJECT : "owns"
+    PROJECT ||--o{ SCENE : "contains"
     USER {
-        string email PK
-        string name
+        int id PK
+        string email UK
         string password_hash
         timestamp created_at
     }
-    SCRIPT {
-        string script_id PK
+    PROJECT {
+        int id PK
         string title
-        list scenes
-        float total_budget
-        float avg_risk
+        text raw_text
+        int owner_id FK
     }
     SCENE {
+        int id PK
+        int project_id FK
         int scene_number
-        string heading
-        string location
-        list characters
-        dict features
+        string slugline
+        string scene_type
         float risk_score
+        float budget
+        json metadata_json
     }
 ```
 
 ---
 
 ## 🏗️ Architecture: The Intelligence Flow
-When a screenplay is uploaded:
-1. **Parsing**: The engine tokenizes the text into discrete scenes.
-2. **Extraction**: A feature-extraction layer identifies production requirements.
-3. **Scoring**: The Risk Engine applies weighted multipliers to calculate difficulty.
-4. **Insight Generation**: Data is passed to **Groq (LLaMA 3.3)** to generate strategic insights.
+1. **Parsing**: Screenplays are tokenized into discrete scenes.
+2. **Extraction**: A feature-extraction layer identifies production requirements using NLP.
+3. **Scoring**: The Risk Engine applies weighted multipliers (customizable by user) to calculate difficulty.
+4. **Persistence**: Results are committed to the PostgreSQL cloud instance.
+5. **Insight Generation**: Analysis data is passed to **Groq (LLaMA 3.3)** for strategic planning.
 
 ---
 
 ### Environment Variables
 Configure the following in your cloud provider:
+- `DATABASE_URL`: Connection string for your **Neon/PostgreSQL** instance.
 - `GROQ_API_KEY`: Groq Inference Engine API key.
 - `SENDGRID_API_KEY`: SendGrid API key for emails.
 - `SENDGRID_FROM_EMAIL`: Verified SendGrid sender address.
