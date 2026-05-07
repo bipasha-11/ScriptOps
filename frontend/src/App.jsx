@@ -94,6 +94,7 @@ function App() {
       const form = new FormData();
       form.append('script', file);
       const token = localStorage.getItem('token');
+      const threshold = localStorage.getItem('risk_threshold') || 50;
       
       const res = await fetch(`${API_BASE_URL}/api/v1/upload`, { 
         method: 'POST', 
@@ -113,7 +114,7 @@ function App() {
       
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const analysisRes = await fetch(`${API_BASE_URL}/api/v1/analysis`, {
+      const analysisRes = await fetch(`${API_BASE_URL}/api/v1/analysis?threshold=${threshold}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

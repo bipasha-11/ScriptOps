@@ -152,13 +152,20 @@ export default function InsightsPanel({ analysis, selectedScene }) {
       }
       
       const token = localStorage.getItem('token');
+      const skillWeight = parseFloat(localStorage.getItem('skill_weight')) || 0.7;
+      const socialWeight = parseFloat(localStorage.getItem('social_weight')) || 0.3;
+
       const res = await fetch(`${API}/match-creators`, { 
           method: 'POST', 
           headers: { 
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           }, 
-          body: JSON.stringify({ script_requirements: { keywords: keywords, max_budget_usd: max_budget } }) 
+          body: JSON.stringify({ 
+            script_requirements: { keywords: keywords, max_budget_usd: max_budget },
+            skill_weight: skillWeight,
+            social_weight: socialWeight
+          }) 
       });
       
       const data = await res.json();

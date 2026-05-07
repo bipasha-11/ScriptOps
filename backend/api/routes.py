@@ -26,7 +26,7 @@ _store: dict = {
 }
 
 
-def _get_analysis_summary() -> dict:
+def _get_analysis_summary(threshold: int = 50) -> dict:
     """Build summary statistics from stored scenes."""
     scenes = _store["scenes"]
     if not scenes:
@@ -38,16 +38,25 @@ def _get_analysis_summary() -> dict:
             "high_risk_scenes": 0,
             "scenes": [],
         }
-    total_budget = sum(s["budget"] for s in scenes)
-    avg_risk = sum(s["risk_score"] for s in scenes) / len(scenes)
-    high_risk = sum(1 for s in scenes if s["risk_score"] >= 50)
+    
+    # Recalculate levels based on threshold for each scene
+    processed_scenes = []
+    for s in scenes:
+        s_copy = s.copy()
+        s_copy["risk_level"] = get_risk_level(s["risk_score"], threshold)
+        processed_scenes.append(s_copy)
+
+    total_budget = sum(s["budget"] for s in processed_scenes)
+    avg_risk = sum(s["risk_score"] for s in processed_scenes) / len(processed_scenes)
+    high_risk = sum(1 for s in processed_scenes if s["risk_score"] >= threshold)
+    
     return {
         "script_title": _store["script_title"],
-        "total_scenes": len(scenes),
+        "total_scenes": len(processed_scenes),
         "total_budget": total_budget,
         "avg_risk_score": round(avg_risk, 1),
         "high_risk_scenes": high_risk,
-        "scenes": scenes,
+        "scenes": processed_scenes,
     }
 
 
@@ -109,11 +118,11 @@ async def get_scene(scene_id: int, user=Depends(get_current_user)):
 
 # ── Analysis ──────────────────────────────────────────────────────────────────
 @router.get("/analysis")
-async def get_analysis(user=Depends(get_current_user)):
+async def get_analysis(user=Depends(get_current_user), threshold: int = 50):
     """Return the full analysis with all scenes and summary stats."""
     if not _store["scenes"]:
         raise HTTPException(404, "No script uploaded yet")
-    return _get_analysis_summary()
+    return _get_analysis_summary(threshold)
 
 
 # ── What-If ───────────────────────────────────────────────────────────────────
@@ -182,7 +191,12 @@ async def match_creators_endpoint(body: MatchRequest, user=Depends(get_current_u
     script_reqs = body.script_requirements
     
     # 1. Execute ML Model against CSV dataset
-    ml_output = calculate_ml_matches(script_reqs.keywords, script_reqs.max_budget_usd)
+    ml_output = calculate_ml_matches(
+        script_reqs.keywords, 
+        script_reqs.max_budget_usd,
+        skill_weight=body.skill_weight,
+        social_weight=body.social_weight
+    )
     
     # 2. Format outputs natively into Pydantic models for Frontend
     formatted_matches = []

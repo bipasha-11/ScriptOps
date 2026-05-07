@@ -22,7 +22,7 @@ if os.path.exists(CSV_PATH):
 else:
     print(f"CRITICAL: Dataset not found at {CSV_PATH}")
 
-def calculate_ml_matches(script_keywords: str, max_budget_usd: int, target_roles: list = ["Cinematographer", "Editor", "Music Director"]):
+def calculate_ml_matches(script_keywords: str, max_budget_usd: int, target_roles: list = ["Cinematographer", "Editor", "Music Director"], skill_weight: float = 0.7, social_weight: float = 0.3):
     if df.empty or technician_embeddings is None:
         return []
 
@@ -48,8 +48,12 @@ def calculate_ml_matches(script_keywords: str, max_budget_usd: int, target_roles
         row = df.iloc[original_idx]
         base_demand = row['Demand_Score']
         
-        # ML Ranking Formula: 60% semantic similarity, 40% intrinsic demand score
-        final_score = (semantic_score * 6.0) + (base_demand * 0.4)
+        # ML Ranking Formula: Configurable weights between semantic similarity and intrinsic demand score
+        # Multiply weights by 10 to keep the same scale (0-10) as the original 6.0/0.4 split (which was 0.6*10 and 0.4*1)
+        # Wait, the original was (semantic_score * 6.0) + (base_demand * 0.4). 
+        # Base demand is 0-10. Semantic score is 0-1.
+        # So it was basically 60% semantic and 40% demand (if demand is normalized).
+        final_score = (semantic_score * skill_weight * 10) + (base_demand * social_weight)
         
         # Dynamically formulate the "Trade-Offs" response based on budget margin
         budget_margin = max_budget_usd - row['Estimated_Day_Rate_USD']

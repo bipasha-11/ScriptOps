@@ -105,6 +105,8 @@ class ScriptRequirements(BaseModel):
 class MatchRequest(BaseModel):
     script_requirements: ScriptRequirements
     creators_dataset: Optional[list[Creator]] = None
+    skill_weight: float = 0.7
+    social_weight: float = 0.3
 
 class Explanation(BaseModel):
     why_they_fit: str

@@ -68,13 +68,20 @@ def estimate_budget(
     return cost
 
 
-def get_risk_level(score: int) -> str:
-    """Return a human-readable risk level label."""
-    if score >= 70:
+def get_risk_level(score: int, threshold: int = 50) -> str:
+    """
+    Return a human-readable risk level label based on a dynamic threshold.
+    Standard thresholds: LOW < 30, MEDIUM < 50, HIGH < 70, CRITICAL >= 70
+    Adjusted based on threshold: 
+    - CRITICAL: threshold + 20
+    - HIGH: threshold
+    - MEDIUM: threshold - 20
+    """
+    if score >= threshold + 20:
         return "CRITICAL"
-    elif score >= 50:
+    elif score >= threshold:
         return "HIGH"
-    elif score >= 30:
+    elif score >= threshold - 20:
         return "MEDIUM"
     else:
         return "LOW"
