@@ -44,7 +44,7 @@ The heart of the application, where data meets production strategy.
 | :---: | :---: |
 | ![Heatmap](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/heatmap.png) | ![Chatbot](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/chatbot.png) |
 
-| Script Inventory Archive | Script Ingestion/Upload | User Configuration |
+| Script Inventory Archive | Script Ingestion/Upload | System Configuration (TopBar Dropdown) |
 | :---: | :---: | :---: |
 | ![Scripts](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/scripts.png) | ![Upload](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/upload.png) | ![Settings](https://raw.githubusercontent.com/bipasha-11/ScriptOps/main/screenshots/settings.png) |
 
