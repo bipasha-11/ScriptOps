@@ -63,7 +63,7 @@ export default function TopBar({ onLogout, userName }) {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute right-0 mt-3 w-80 glass border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 p-5"
+                  className="absolute right-0 mt-3 w-80 bg-secondary border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-50 p-5"
                 >
                   <div className="flex flex-col gap-5">
                     <div className="flex items-center justify-between border-b border-white/5 pb-3">
