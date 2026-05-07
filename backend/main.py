@@ -13,6 +13,12 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(env_path, override=False)
 
+from .core.database import engine, Base
+from .models import db_models
+
+# Create tables in Neon
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(
     title="Script Intelligence API",
     description="AI-Powered Script Intelligence & Risk Analysis System",

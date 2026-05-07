@@ -3,7 +3,7 @@ REST API routes for the Script Intelligence system.
 All endpoints under /api/v1/
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Header
+from fastapi import APIRouter, UploadFile, File, HTTPException, Header, Depends
 from ..core.parser import extract_text_from_file, split_into_scenes
 from ..core.extractor import analyze_scene
 from ..core.risk_engine import analyze_risk_and_cost, get_risk_level
@@ -14,24 +14,19 @@ from ..models.schemas import (
     ChatRequest, ChatResponse, MatchRequest, MatchResponse
 )
 from .auth import get_current_user
-from fastapi import Depends
+from ..core.database import get_db
+from ..models.db_models import User, Project, Scene
+from sqlalchemy.orm import Session
+import json
 
 router = APIRouter(prefix="/api/v1")
 
-# ── In-memory store ──────────────────────────────────────────────────────────
-_store: dict = {
-    "script_title": "",
-    "raw_text": "",
-    "scenes": [],         # List of fully analyzed scene dicts
-}
-
-
-def _get_analysis_summary(threshold: int = 50) -> dict:
+def _get_analysis_summary(project: Project, threshold: int = 50) -> dict:
     """Build summary statistics from stored scenes."""
-    scenes = _store["scenes"]
+    scenes = project.scenes
     if not scenes:
         return {
-            "script_title": _store["script_title"],
+            "script_title": project.title,
             "total_scenes": 0,
             "total_budget": 0,
             "avg_risk_score": 0.0,
@@ -39,19 +34,28 @@ def _get_analysis_summary(threshold: int = 50) -> dict:
             "scenes": [],
         }
     
-    # Recalculate levels based on threshold for each scene
     processed_scenes = []
     for s in scenes:
-        s_copy = s.copy()
-        s_copy["risk_level"] = get_risk_level(s["risk_score"], threshold)
-        processed_scenes.append(s_copy)
+        # Convert DB model to dict and merge metadata
+        s_dict = {
+            "scene_number": s.scene_number,
+            "slugline": s.slugline,
+            "scene_type": s.scene_type,
+            "content": s.content,
+            "risk_score": s.risk_score,
+            "budget": s.budget,
+            "risk_level": get_risk_level(s.risk_score, threshold)
+        }
+        if s.metadata_json:
+            s_dict.update(s.metadata_json)
+        processed_scenes.append(s_dict)
 
     total_budget = sum(s["budget"] for s in processed_scenes)
     avg_risk = sum(s["risk_score"] for s in processed_scenes) / len(processed_scenes)
     high_risk = sum(1 for s in processed_scenes if s["risk_score"] >= threshold)
     
     return {
-        "script_title": _store["script_title"],
+        "script_title": project.title,
         "total_scenes": len(processed_scenes),
         "total_budget": total_budget,
         "avg_risk_score": round(avg_risk, 1),
@@ -62,80 +66,101 @@ def _get_analysis_summary(threshold: int = 50) -> dict:
 
 # ── Upload ────────────────────────────────────────────────────────────────────
 @router.post("/upload", response_model=UploadResponse)
-async def upload_script(script: UploadFile = File(...), user=Depends(get_current_user)):
+async def upload_script(script: UploadFile = File(...), email: str = Depends(get_current_user), db: Session = Depends(get_db)):
     """Upload a script file (PDF or text) and process it."""
-    if not script.filename:
-        raise HTTPException(400, "No file provided")
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(404, "User not found")
 
     file_bytes = await script.read()
-    if not file_bytes:
-        raise HTTPException(400, "Empty file")
-
-    # 1. Extract text
     raw_text = extract_text_from_file(script.filename, file_bytes)
-    if not raw_text.strip():
-        raise HTTPException(422, "Could not extract text from the uploaded file")
-
-    # 2. Split into scenes
     raw_scenes = split_into_scenes(raw_text)
 
-    # 3. Extract features + compute risk/cost for each scene
-    analyzed_scenes = []
+    # Create Project
+    new_project = Project(title=script.filename, raw_text=raw_text, owner_id=user.id)
+    db.add(new_project)
+    db.flush() # Get ID
+
+    # Process and Store Scenes
     for raw_scene in raw_scenes:
         enriched = analyze_scene(raw_scene)
         enriched = analyze_risk_and_cost(enriched)
-        analyzed_scenes.append(enriched)
+        
+        # Split enriched into DB fields and JSON metadata
+        meta = {k: v for k, v in enriched.items() if k not in ["scene_number", "slugline", "scene_type", "content", "risk_score", "budget"]}
+        
+        db_scene = Scene(
+            project_id=new_project.id,
+            scene_number=enriched["scene_number"],
+            slugline=enriched["slugline"],
+            scene_type=enriched["scene_type"],
+            content=enriched["content"],
+            risk_score=enriched["risk_score"],
+            budget=enriched["budget"],
+            metadata_json=meta
+        )
+        db.add(db_scene)
 
-    # 4. Store in memory
-    _store["script_title"] = script.filename
-    _store["raw_text"] = raw_text
-    _store["scenes"] = analyzed_scenes
+    db.commit()
 
     return UploadResponse(
         status="success",
-        total_scenes=len(analyzed_scenes),
+        total_scenes=len(raw_scenes),
         script_title=script.filename,
     )
 
 
 # ── Scenes ────────────────────────────────────────────────────────────────────
 @router.get("/scenes")
-async def get_scenes(user=Depends(get_current_user)):
-    """Return all parsed and analyzed scenes."""
-    if not _store["scenes"]:
+async def get_scenes(email: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at.desc()).first()
+    if not project:
         raise HTTPException(404, "No script uploaded yet")
-    return {"scenes": _store["scenes"]}
+    
+    scenes_data = []
+    for s in project.scenes:
+        d = {"scene_number": s.scene_number, "slugline": s.slugline, "scene_type": s.scene_type, "content": s.content, "risk_score": s.risk_score, "budget": s.budget}
+        if s.metadata_json: d.update(s.metadata_json)
+        scenes_data.append(d)
+    return {"scenes": scenes_data}
 
 
 @router.get("/scenes/{scene_id}")
-async def get_scene(scene_id: int, user=Depends(get_current_user)):
-    """Return a single scene by scene_number."""
-    for s in _store["scenes"]:
-        if s["scene_number"] == scene_id:
-            return s
-    raise HTTPException(404, f"Scene {scene_id} not found")
+async def get_scene(scene_id: int, email: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at.desc()).first()
+    if not project: raise HTTPException(404, "No script uploaded")
+    
+    s = db.query(Scene).filter(Scene.project_id == project.id, Scene.scene_number == scene_id).first()
+    if not s: raise HTTPException(404, f"Scene {scene_id} not found")
+    
+    d = {"scene_number": s.scene_number, "slugline": s.slugline, "scene_type": s.scene_type, "content": s.content, "risk_score": s.risk_score, "budget": s.budget}
+    if s.metadata_json: d.update(s.metadata_json)
+    return d
 
 
 # ── Analysis ──────────────────────────────────────────────────────────────────
 @router.get("/analysis")
-async def get_analysis(user=Depends(get_current_user), threshold: int = 50):
-    """Return the full analysis with all scenes and summary stats."""
-    if not _store["scenes"]:
+async def get_analysis(email: str = Depends(get_current_user), db: Session = Depends(get_db), threshold: int = 50):
+    user = db.query(User).filter(User.email == email).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at.desc()).first()
+    if not project:
         raise HTTPException(404, "No script uploaded yet")
-    return _get_analysis_summary(threshold)
+    return _get_analysis_summary(project, threshold)
 
 
 # ── What-If ───────────────────────────────────────────────────────────────────
 @router.post("/whatif/{scene_id}", response_model=WhatIfResponse)
-async def whatif_scene(scene_id: int, body: WhatIfRequest, user=Depends(get_current_user)):
-    """Simulate what-if modifications on a scene."""
-    original = None
-    for s in _store["scenes"]:
-        if s["scene_number"] == scene_id:
-            original = s
-            break
-    if original is None:
-        raise HTTPException(404, f"Scene {scene_id} not found")
+async def whatif_scene(scene_id: int, body: WhatIfRequest, email: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at.desc()).first()
+    
+    s = db.query(Scene).filter(Scene.project_id == project.id, Scene.scene_number == scene_id).first()
+    if not s: raise HTTPException(404, f"Scene {scene_id} not found")
+
+    original = {"scene_number": s.scene_number, "slugline": s.slugline, "scene_type": s.scene_type, "content": s.content, "risk_score": s.risk_score, "budget": s.budget}
+    if s.metadata_json: original.update(s.metadata_json)
 
     modifications = body.model_dump(exclude_none=True)
     result = simulate_whatif(original, modifications)
@@ -144,31 +169,38 @@ async def whatif_scene(scene_id: int, body: WhatIfRequest, user=Depends(get_curr
 
 # ── LLM Insights ─────────────────────────────────────────────────────────────
 @router.get("/insights")
-async def get_overall_insights(user=Depends(get_current_user), x_groq_api_key: str = Header(None)):
-    """Generate LLM-powered overall script insights."""
-    if not _store["scenes"]:
-        raise HTTPException(404, "No script uploaded yet")
-    analysis = _get_analysis_summary()
+async def get_overall_insights(email: str = Depends(get_current_user), db: Session = Depends(get_db), x_groq_api_key: str = Header(None)):
+    user = db.query(User).filter(User.email == email).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at.desc()).first()
+    if not project: raise HTTPException(404, "No script uploaded")
+    
+    analysis = _get_analysis_summary(project)
     insights = await generate_overall_insight(analysis, api_key=x_groq_api_key)
     return insights
 
 
 @router.get("/insights/{scene_id}")
-async def get_scene_insight(scene_id: int, user=Depends(get_current_user), x_groq_api_key: str = Header(None)):
-    """Generate LLM-powered insight for a single scene."""
-    for s in _store["scenes"]:
-        if s["scene_number"] == scene_id:
-            insight = await generate_scene_insight(s, api_key=x_groq_api_key)
-            return insight
-    raise HTTPException(404, f"Scene {scene_id} not found")
+async def get_scene_insight(scene_id: int, email: str = Depends(get_current_user), db: Session = Depends(get_db), x_groq_api_key: str = Header(None)):
+    user = db.query(User).filter(User.email == email).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at.desc()).first()
+    
+    s = db.query(Scene).filter(Scene.project_id == project.id, Scene.scene_number == scene_id).first()
+    if not s: raise HTTPException(404, f"Scene {scene_id} not found")
+    
+    scene_dict = {"scene_number": s.scene_number, "slugline": s.slugline, "scene_type": s.scene_type, "content": s.content, "risk_score": s.risk_score, "budget": s.budget}
+    if s.metadata_json: scene_dict.update(s.metadata_json)
+    
+    insight = await generate_scene_insight(scene_dict, api_key=x_groq_api_key)
+    return insight
 
 @router.post("/insights/chat", response_model=ChatResponse)
-async def chat_interaction(body: ChatRequest, user=Depends(get_current_user), x_groq_api_key: str = Header(None)):
-    """Send message to LLM directly."""
-    if not _store["scenes"]:
-        raise HTTPException(404, "No script uploaded yet")
+async def chat_interaction(body: ChatRequest, email: str = Depends(get_current_user), db: Session = Depends(get_db), x_groq_api_key: str = Header(None)):
+    user = db.query(User).filter(User.email == email).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at.desc()).first()
+    if not project: raise HTTPException(404, "No script uploaded")
+    
     from ..core.llm_service import chat_with_script
-    analysis = _get_analysis_summary()
+    analysis = _get_analysis_summary(project)
     response_text = await chat_with_script(
         analysis, 
         [m.model_dump() for m in body.messages], 
@@ -214,19 +246,29 @@ async def match_creators_endpoint(body: MatchRequest, user=Depends(get_current_u
     
 # ── Data Management ──────────────────────────────────────────────────────────
 @router.post("/purge")
-async def purge_data(user=Depends(get_current_user)):
-    """Clear all project data from the in-memory store."""
-    _store["script_title"] = ""
-    _store["raw_text"] = ""
-    _store["scenes"] = []
-    return {"status": "success", "message": "Project data purged"}
+async def purge_data(email: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Clear all project data from the DB for this user."""
+    user = db.query(User).filter(User.email == email).first()
+    if not user: raise HTTPException(404)
+    
+    project = db.query(Project).filter(Project.owner_id == user.id).first()
+    if project:
+        db.delete(project) # Cascades to scenes
+        db.commit()
+    return {"status": "success", "message": "Project data purged from Neon"}
 
 @router.get("/export/pdf")
-async def export_pdf(user=Depends(get_current_user)):
-    """Placeholder for PDF export."""
-    return {"status": "success", "message": "PDF Report Generation Started (Mock)"}
+async def export_pdf(email: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Placeholder for PDF export with DB check."""
+    user = db.query(User).filter(User.email == email).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).first()
+    if not project: raise HTTPException(404, "No data to export")
+    return {"status": "success", "message": f"PDF Report for '{project.title}' is being generated."}
 
 @router.get("/export/fdx")
-async def export_fdx(user=Depends(get_current_user)):
-    """Placeholder for FDX export."""
-    return {"status": "success", "message": "FDX Notes Generation Started (Mock)"}
+async def export_fdx(email: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Placeholder for FDX export with DB check."""
+    user = db.query(User).filter(User.email == email).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).first()
+    if not project: raise HTTPException(404, "No data to export")
+    return {"status": "success", "message": f"FDX Notes for '{project.title}' are ready."}

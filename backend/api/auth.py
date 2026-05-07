@@ -10,6 +10,9 @@ from pydantic import BaseModel, EmailStr
 from jose import JWTError, jwt
 import bcrypt
 from ..core.mail import send_otp_email
+from ..core.database import get_db
+from ..models.db_models import User
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 # Removed passlib CryptContext due to bcrypt 4.0 compatibility issues
@@ -19,22 +22,6 @@ bearer_scheme = HTTPBearer()
 SECRET_KEY = os.getenv("JWT_SECRET", "supersecretkey123")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
-
-# File-based user storage
-USERS_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "users.json")
-os.makedirs(os.path.dirname(USERS_FILE), exist_ok=True)
-
-if not os.path.exists(USERS_FILE):
-    with open(USERS_FILE, "w") as f:
-        json.dump({}, f)
-
-def get_users():
-    with open(USERS_FILE, "r") as f:
-        return json.load(f)
-
-def save_users(users):
-    with open(USERS_FILE, "w") as f:
-        json.dump(users, f)
 
 # In-memory OTP storage (email -> {otp, expires_at})
 otp_store = {}
@@ -72,27 +59,23 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     token = credentials.credentials
     try:
-        print(f"[DEBUG] Decoding token: {token[:10]}...")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            print("[DEBUG] Email not found in payload")
             raise HTTPException(status_code=401, detail="Invalid token")
-        print(f"[DEBUG] Token valid for user: {email}")
         return email
-    except JWTError as e:
-        print(f"[DEBUG] JWT Decode Error: {str(e)}")
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # --- Routes ---
 
 @router.post("/signup")
-async def signup(user: UserSignUp):
-    users = get_users()
-    if user.email in users:
+async def signup(user: UserSignUp, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if db_user:
         raise HTTPException(status_code=400, detail="User already exists")
     
-    # Use native bcrypt to avoid passlib initialization bugs
+    # Use native bcrypt
     password_bytes = user.password.encode('utf-8')
     salt = bcrypt.gensalt()
     pwd_hash = bcrypt.hashpw(password_bytes[:72], salt).decode('utf-8')
@@ -112,7 +95,7 @@ async def signup(user: UserSignUp):
         raise HTTPException(status_code=500, detail="Failed to send OTP")
 
 @router.post("/verify-signup")
-async def verify_signup(data: VerifyOTP):
+async def verify_signup(data: VerifyOTP, db: Session = Depends(get_db)):
     if data.email not in otp_store:
         raise HTTPException(status_code=400, detail="No pending signup found")
     
@@ -124,14 +107,15 @@ async def verify_signup(data: VerifyOTP):
     if stored["otp"] != data.otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
     
-    # Create user
-    users = get_users()
-    users[data.email] = {
-        "name": stored["name"],
-        "password": stored["password_hash"],
-        "created_at": datetime.utcnow().isoformat()
-    }
-    save_users(users)
+    # Create user in DB
+    new_user = User(
+        email=data.email,
+        name=stored["name"],
+        password=stored["password_hash"]
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
     
     # Clean up
     del otp_store[data.email]
@@ -141,50 +125,23 @@ async def verify_signup(data: VerifyOTP):
         data={"sub": data.email},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    return {"access_token": access_token, "token_type": "bearer", "email": data.email, "name": users[data.email]["name"]}
+    return {"access_token": access_token, "token_type": "bearer", "email": data.email, "name": new_user.name}
 
 @router.post("/login")
-async def login(user: UserLogin):
-    users = get_users()
-    if user.email not in users:
+async def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if not db_user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    user_data = users[user.email]
     # Use native bcrypt for verification
-    stored_hash = user_data["password_hash"].encode('utf-8') if "password_hash" in user_data else user_data.get("password", "").encode('utf-8')
-    if not bcrypt.checkpw(user.password.encode('utf-8')[:72], stored_hash):
+    if not bcrypt.checkpw(user.password.encode('utf-8')[:72], db_user.password.encode('utf-8')):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     access_token = create_access_token(
         data={"sub": user.email},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    return {"access_token": access_token, "token_type": "bearer", "email": user.email, "name": user_data["name"]}
-
-@router.post("/verify-login")
-async def verify_login(data: VerifyOTP):
-    if data.email not in otp_store:
-        raise HTTPException(status_code=400, detail="No pending login found")
-    
-    stored = otp_store[data.email]
-    if time.time() > stored["expires_at"]:
-        del otp_store[data.email]
-        raise HTTPException(status_code=400, detail="OTP expired")
-    
-    if stored["otp"] != data.otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    
-    # Clean up
-    del otp_store[data.email]
-    
-    # Return token
-    access_token = create_access_token(
-        data={"sub": data.email},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    # Note: Login currently doesn't use OTP but we keep this for consistency if needed later
-    users = get_users()
-    return {"access_token": access_token, "token_type": "bearer", "email": data.email, "name": users[data.email]["name"]}
+    return {"access_token": access_token, "token_type": "bearer", "email": user.email, "name": db_user.name}
 
 @router.post("/resend-otp")
 async def resend_otp(data: dict):
@@ -192,11 +149,9 @@ async def resend_otp(data: dict):
     if not email:
         raise HTTPException(status_code=400, detail="Email is required")
     
-    # Check if there is an existing session
     if email not in otp_store:
         raise HTTPException(status_code=400, detail="No active session. Please start over.")
     
-    # Generate new OTP
     otp = str(random.randint(100000, 999999))
     otp_store[email]["otp"] = otp
     otp_store[email]["expires_at"] = time.time() + 600
@@ -207,7 +162,8 @@ async def resend_otp(data: dict):
         raise HTTPException(status_code=500, detail="Failed to send OTP")
 
 @router.get("/me")
-async def me(email: str = Depends(get_current_user)):
-    users = get_users()
-    user_data = users.get(email, {})
-    return {"email": email, "name": user_data.get("name", "")}
+async def me(email: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == email).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"email": email, "name": db_user.name}
