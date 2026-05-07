@@ -156,12 +156,47 @@ function App() {
   };
 
   const handleExportPDF = async () => {
-    alert("PDF Report Generation Started. Your report will be ready for download in a few moments.");
-    // In a real app, this would trigger a download or a redirect to the generated file
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/v1/export/pdf`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error("Export failed");
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ScriptOps_Report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      console.error(e);
+      alert("Failed to generate PDF. Please try again.");
+    }
   };
 
   const handleExportFDX = async () => {
-    alert("FDX Notes Exporting... Check your downloads folder.");
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/v1/export/fdx`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error("Export failed");
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Script_Notes.fdx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      console.error(e);
+      alert("Failed to export FDX. Please try again.");
+    }
   };
 
   const showChrome = analysis || isAnalyzing;

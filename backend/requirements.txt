@@ -16,3 +16,4 @@ groq
 supabase
 sqlalchemy
 psycopg2-binary
+reportlab

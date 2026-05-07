@@ -250,6 +250,14 @@ async def match_creators_endpoint(body: MatchRequest, user=Depends(get_current_u
         
     return MatchResponse(matches=formatted_matches)
     
+from fastapi.responses import FileResponse, StreamingResponse
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
 # ── Data Management ──────────────────────────────────────────────────────────
 @router.post("/purge")
 async def purge_data(email: str = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -265,16 +273,84 @@ async def purge_data(email: str = Depends(get_current_user), db: Session = Depen
 
 @router.get("/export/pdf")
 async def export_pdf(email: str = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Placeholder for PDF export with DB check."""
+    """Generate and return a professional PDF report."""
     user = db.query(User).filter(User.email == email).first()
-    project = db.query(Project).filter(Project.owner_id == user.id).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at.desc()).first()
     if not project: raise HTTPException(404, "No data to export")
-    return {"status": "success", "message": f"PDF Report for '{project.title}' is being generated."}
+
+    summary = _get_analysis_summary(project)
+    
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # Title
+    elements.append(Paragraph(f"Script Intelligence Report: {project.title}", styles['Title']))
+    elements.append(Spacer(1, 12))
+
+    # Executive Summary
+    elements.append(Paragraph("Executive Summary", styles['Heading2']))
+    elements.append(Paragraph(f"Total Scenes: {summary['total_scenes']}", styles['Normal']))
+    elements.append(Paragraph(f"Estimated Production Cost: ${summary['total_budget']}K", styles['Normal']))
+    elements.append(Paragraph(f"Average Risk Score: {summary['avg_risk_score']}/100", styles['Normal']))
+    elements.append(Paragraph(f"High Risk Scenes Identified: {summary['high_risk_scenes']}", styles['Normal']))
+    elements.append(Spacer(1, 20))
+
+    # Scene Table
+    elements.append(Paragraph("Scene Breakdown", styles['Heading2']))
+    data = [["Scene", "Slugline", "Risk", "Budget"]]
+    for s in summary['scenes']:
+        data.append([
+            str(s['scene_number']),
+            s['slugline'][:30] + "..." if len(s['slugline']) > 30 else s['slugline'],
+            f"{s['risk_score']}",
+            f"${s['budget']}K"
+        ])
+
+    t = Table(data, colWidths=[50, 250, 50, 100])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    elements.append(t)
+
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer, 
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=ScriptOps_Report_{project.id}.pdf"}
+    )
 
 @router.get("/export/fdx")
 async def export_fdx(email: str = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Placeholder for FDX export with DB check."""
+    """Return a simple .FDX (Final Draft XML) notes file."""
     user = db.query(User).filter(User.email == email).first()
-    project = db.query(Project).filter(Project.owner_id == user.id).first()
+    project = db.query(Project).filter(Project.owner_id == user.id).order_by(Project.created_at.desc()).first()
     if not project: raise HTTPException(404, "No data to export")
-    return {"status": "success", "message": f"FDX Notes for '{project.title}' are ready."}
+
+    # Mock FDX XML structure
+    fdx_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<FinalDraft DocumentType="Script" Version="4">
+    <Content>
+        <Paragraph Type="Action">
+            <Text>ScriptOps Export: {project.title}</Text>
+        </Paragraph>
+        <Paragraph Type="Action">
+            <Text>Analysis generated at {project.created_at}</Text>
+        </Paragraph>
+    </Content>
+</FinalDraft>"""
+
+    return StreamingResponse(
+        io.BytesIO(fdx_content.encode("utf-8")),
+        media_type="application/xml",
+        headers={"Content-Disposition": f"attachment; filename={project.title}.fdx"}
+    )
