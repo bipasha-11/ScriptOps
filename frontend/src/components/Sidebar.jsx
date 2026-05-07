@@ -50,12 +50,6 @@ export default function Sidebar({ isCollapsed, onToggle, onLogout }) {
       {/* Bottom Control Hint */}
       {!isCollapsed ? (
         <div className="p-4 border-t border-white/5 flex flex-col gap-3">
-          <div className="glass rounded-xl p-4 flex flex-col gap-2 text-center text-xs text-slate-400">
-            <p>Hackathon Build v2.0</p>
-            <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden mt-1">
-               <div className="h-full bg-accent w-3/4"></div>
-            </div>
-          </div>
           <button onClick={onToggle} className="flex items-center justify-center gap-2 text-slate-400 hover:text-white transition-colors w-full p-2 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10">
             <ChevronLeft size={16} /> Hide Sidebar
           </button>
