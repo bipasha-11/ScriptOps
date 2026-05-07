@@ -6,7 +6,7 @@ All endpoints under /api/v1/
 from fastapi import APIRouter, UploadFile, File, HTTPException, Header
 from ..core.parser import extract_text_from_file, split_into_scenes
 from ..core.extractor import analyze_scene
-from ..core.risk_engine import analyze_risk_and_cost
+from ..core.risk_engine import analyze_risk_and_cost, get_risk_level
 from ..core.simulator import simulate_whatif
 from ..core.llm_service import generate_scene_insight, generate_overall_insight
 from ..models.schemas import (
