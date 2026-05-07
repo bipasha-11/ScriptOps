@@ -57,7 +57,11 @@ const Auth = ({ onLogin, onCancel }) => {
       }
     } catch (err) {
       console.error("[AUTH] Error:", err.message);
-      setError(err.message);
+      if (err.message.includes("Failed to fetch") || err.message.includes("Load failed")) {
+        setError("Server is waking up (Render)... Please try again in 30 seconds.");
+      } else {
+        setError(err.message || "Connection failed. Check your internet.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +84,11 @@ const Auth = ({ onLogin, onCancel }) => {
       if (!response.ok) throw new Error(data.detail || `Failed to resend OTP (${response.status})`);
       setResendTimer(60);
     } catch (err) {
-      setError(err.message);
+      if (err.message.includes("Failed to fetch") || err.message.includes("Load failed")) {
+        setError("Server is waking up (Render)... Please wait.");
+      } else {
+        setError(err.message);
+      }
     }
   };
 
@@ -114,7 +122,12 @@ const Auth = ({ onLogin, onCancel }) => {
       sessionStorage.setItem('userName', data.name);
       onLogin(data);
     } catch (err) {
-      setError(err.message);
+      console.error("[AUTH OTP] Error:", err.message);
+      if (err.message.includes("Failed to fetch") || err.message.includes("Load failed")) {
+        setError("Server is waking up (Render)... Please try again.");
+      } else {
+        setError(err.message || "Invalid OTP or connection error.");
+      }
     } finally {
       setIsLoading(false);
     }
