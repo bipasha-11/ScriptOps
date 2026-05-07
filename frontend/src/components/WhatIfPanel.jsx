@@ -29,13 +29,14 @@ export default function WhatIfPanel({ scenes, selectedScene }) {
   const simulate = async () => {
     if (!scene) return;
     setLoading(true);
+    setResult(null);
     try {
       const body = {};
       if (Object.keys(features).length) body.features = features;
       if (dayNight) body.day_night = dayNight;
       if (numChars !== '') body.num_characters = parseInt(numChars) || 0;
 
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await fetch(`${API}/whatif/${scene.scene_number}`, {
         method: 'POST',
         headers: { 
@@ -44,10 +45,13 @@ export default function WhatIfPanel({ scenes, selectedScene }) {
         },
         body: JSON.stringify(body),
       });
+      
       const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Simulation failed");
       setResult(data);
     } catch (e) {
       console.error(e);
+      alert(`Simulation Error: ${e.message}`);
     } finally {
       setLoading(false);
     }

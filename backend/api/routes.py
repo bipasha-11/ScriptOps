@@ -86,14 +86,13 @@ async def upload_script(script: UploadFile = File(...), email: str = Depends(get
         enriched = analyze_scene(raw_scene)
         enriched = analyze_risk_and_cost(enriched)
         
-        # Determine scene type string for DB
+        # Determine scene type string for DB (simple INT/EXT)
         stype = "INT" if enriched["scene_type"]["interior"] else "EXT"
         if enriched["scene_type"]["exterior"] and enriched["scene_type"]["interior"]:
             stype = "INT/EXT"
         
-        # Split enriched into DB fields and JSON metadata
-        # We map heading -> slugline and body -> content
-        meta = {k: v for k, v in enriched.items() if k not in ["scene_number", "heading", "body", "scene_type", "risk_score", "budget"]}
+        # We exclude basic DB columns from metadata, but keep full scene_type dict for simulator
+        meta = {k: v for k, v in enriched.items() if k not in ["scene_number", "heading", "body", "risk_score", "budget"]}
         
         db_scene = Scene(
             project_id=new_project.id,
@@ -165,8 +164,26 @@ async def whatif_scene(scene_id: int, body: WhatIfRequest, email: str = Depends(
     s = db.query(Scene).filter(Scene.project_id == project.id, Scene.scene_number == scene_id).first()
     if not s: raise HTTPException(404, f"Scene {scene_id} not found")
 
-    original = {"scene_number": s.scene_number, "slugline": s.slugline, "scene_type": s.scene_type, "content": s.content, "risk_score": s.risk_score, "budget": s.budget}
-    if s.metadata_json: original.update(s.metadata_json)
+    # Reconstruct scene object for simulator
+    # We need the full scene_type dict and features dict from metadata_json
+    meta = s.metadata_json or {}
+    features = meta.get("features", {})
+    scene_type = meta.get("scene_type", {
+        "interior": "INT" in (s.scene_type or ""),
+        "exterior": "EXT" in (s.scene_type or ""),
+        "day_night": "NIGHT" if features.get("night") else "DAY"
+    })
+
+    original = {
+        "scene_number": s.scene_number,
+        "heading": s.slugline,
+        "body": s.content,
+        "risk_score": s.risk_score,
+        "budget": s.budget,
+        "features": features,
+        "scene_type": scene_type,
+        "num_characters": meta.get("num_characters", 0)
+    }
 
     modifications = body.model_dump(exclude_none=True)
     result = simulate_whatif(original, modifications)

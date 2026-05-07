@@ -19,6 +19,9 @@ WORKDIR /app
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download the sentence-transformers model to prevent runtime timeouts
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
 # Copy backend as a package named 'backend'
 COPY backend/ ./backend/
 

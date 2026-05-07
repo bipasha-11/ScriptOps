@@ -26,7 +26,6 @@ app = FastAPI(
 )
 
 # CORS — allow Vercel frontend
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://scriptops.vercel.app").rstrip("/")
 origins = [
     "http://localhost:5173",
     "http://localhost:3000",
@@ -34,13 +33,14 @@ origins = [
     "https://scriptops-1.onrender.com",
 ]
 
-if FRONTEND_URL not in origins and FRONTEND_URL != "*":
-    origins.append(FRONTEND_URL)
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+if FRONTEND_URL and FRONTEND_URL not in origins:
+    origins.append(FRONTEND_URL.rstrip("/"))
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

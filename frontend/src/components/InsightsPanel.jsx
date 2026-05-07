@@ -98,7 +98,7 @@ export default function InsightsPanel({ analysis, selectedScene }) {
     if (overallData) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const groqKey = localStorage.getItem('groq_api_key');
       const headers = { 
         'Authorization': `Bearer ${token}`
@@ -119,7 +119,7 @@ export default function InsightsPanel({ analysis, selectedScene }) {
     if (!num) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const groqKey = localStorage.getItem('groq_api_key');
       const headers = { 
         'Authorization': `Bearer ${token}`
@@ -151,7 +151,7 @@ export default function InsightsPanel({ analysis, selectedScene }) {
         max_budget = Math.max(2000, currentSceneData.budget * 0.15);
       }
       
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const skillWeight = parseFloat(localStorage.getItem('skill_weight')) || 0.7;
       const socialWeight = parseFloat(localStorage.getItem('social_weight')) || 0.3;
 
@@ -199,7 +199,7 @@ export default function InsightsPanel({ analysis, selectedScene }) {
     setChatLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const groqKey = localStorage.getItem('groq_api_key');
       const headers = { 
         'Content-Type': 'application/json',
@@ -269,6 +269,13 @@ export default function InsightsPanel({ analysis, selectedScene }) {
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
         )}
+
+        <div className="ml-auto pr-2 flex items-center gap-2">
+           <div className={`w-2 h-2 rounded-full ${localStorage.getItem('groq_api_key') ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-slate-600'}`}></div>
+           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter hidden sm:inline">
+             {localStorage.getItem('groq_api_key') ? 'User Key Active' : 'No Key Set'}
+           </span>
+        </div>
       </div>
 
       {currentScene && (tab === 'scene' || tab === 'chat' || tab === 'crew') && (
