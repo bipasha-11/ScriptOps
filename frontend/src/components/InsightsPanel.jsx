@@ -99,8 +99,14 @@ export default function InsightsPanel({ analysis, selectedScene }) {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      const groqKey = localStorage.getItem('groq_api_key');
+      const headers = { 
+        'Authorization': `Bearer ${token}`
+      };
+      if (groqKey) headers['X-Groq-Api-Key'] = groqKey;
+
       const res = await fetch(`${API}/insights`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: headers
       });
       setOverallData(await res.json());
     } catch (e) {
@@ -114,8 +120,14 @@ export default function InsightsPanel({ analysis, selectedScene }) {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      const groqKey = localStorage.getItem('groq_api_key');
+      const headers = { 
+        'Authorization': `Bearer ${token}`
+      };
+      if (groqKey) headers['X-Groq-Api-Key'] = groqKey;
+
       const res = await fetch(`${API}/insights/${num}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: headers
       });
       const data = await res.json();
       setSceneData(prev => ({ ...prev, [num]: data }));
@@ -181,12 +193,16 @@ export default function InsightsPanel({ analysis, selectedScene }) {
 
     try {
       const token = localStorage.getItem('token');
+      const groqKey = localStorage.getItem('groq_api_key');
+      const headers = { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      if (groqKey) headers['X-Groq-Api-Key'] = groqKey;
+
       const res = await fetch(`${API}/insights/chat`, {
         method: 'POST', 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: headers,
         body: JSON.stringify({ messages: newHistory, selected_scene_id: selectedScene || null })
       });
       const data = await res.json();

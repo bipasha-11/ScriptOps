@@ -16,17 +16,29 @@ logger = logging.getLogger(__name__)
 _client = None
 
 
-def _get_client():
+def _get_client(api_key=None):
     global _client
+    
+    # If a specific API key is provided, create a one-off client
+    if api_key:
+        try:
+            from groq import AsyncGroq
+            return AsyncGroq(api_key=api_key)
+        except Exception as e:
+            logger.error(f"Failed to initialise custom Groq client: {e}")
+            return None
+
+    # Fallback to global client or env var
     if _client is not None:
         return _client
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
+    
+    env_api_key = os.getenv("GROQ_API_KEY")
+    if not env_api_key:
         logger.warning("GROQ_API_KEY not set — LLM insights will be unavailable")
         return None
     try:
         from groq import AsyncGroq
-        _client = AsyncGroq(api_key=api_key)
+        _client = AsyncGroq(api_key=env_api_key)
     except Exception as e:
         logger.error(f"Failed to initialise Groq client: {e}")
         return None
@@ -96,9 +108,9 @@ def _safe_parse_json(text: str) -> dict:
         return {"error": "Failed to parse LLM response", "raw": text}
 
 
-async def generate_scene_insight(scene: dict) -> dict:
+async def generate_scene_insight(scene: dict, api_key: str = None) -> dict:
     """Generate LLM insight for a single scene using Groq."""
-    client = _get_client()
+    client = _get_client(api_key)
     if client is None:
         return _fallback_scene_insight(scene)
 
@@ -129,9 +141,9 @@ async def generate_scene_insight(scene: dict) -> dict:
         return _fallback_scene_insight(scene)
 
 
-async def generate_overall_insight(analysis: dict) -> dict:
+async def generate_overall_insight(analysis: dict, api_key: str = None) -> dict:
     """Generate LLM insight for the full script analysis using Groq."""
-    client = _get_client()
+    client = _get_client(api_key)
     if client is None:
         return _fallback_overall_insight(analysis)
 
@@ -171,11 +183,44 @@ async def generate_overall_insight(analysis: dict) -> dict:
         return _fallback_overall_insight(analysis)
 
 
-async def chat_with_script(analysis: dict, messages: list, selected_scene_id: int = None) -> str:
+async def chat_with_script(analysis: dict, messages: list, selected_scene_id: int = None, api_key: str = None) -> str:
     """Send a chat message to Groq with script context."""
-    client = _get_client()
+    client = _get_client(api_key)
     if client is None:
-        return "I'm sorry, but Groq is not configured. Please add your GROQ_API_KEY to the backend/.env file."
+        return "I'm sorry, but Groq is not configured. Please add your GROQ_API_KEY in the System Configuration panel (top right)."
+
+    # Build context string for the System Prompt
+    context = f"Script Title: {analysis.get('script_title', 'Untitled')}\n"
+    context += f"Total Budget: ${analysis.get('total_budget', 0):,}\n"
+    
+    if selected_scene_id:
+        scene = next((s for s in analysis.get('scenes', []) if s['scene_number'] == selected_scene_id), None)
+        if scene:
+            context += f"\nCurrently focusing on Scene #{scene['scene_number']}: {scene['heading']}\n"
+            context += f"Risk Score: {scene['risk_score']}/100\n"
+            context += f"Budget: ${scene['budget']:,}\n"
+            context += f"Characters: {', '.join(scene.get('characters', []))}\n"
+            context += f"Excerpt: {scene.get('body', '')[:800]}\n"
+
+    system_prompt = "You are an expert film production assistant. You are helping the user analyze a script breakdown and cost/risk estimates. Use the provided context to answer their questions. Keep answers concise and helpful.\n\nContext:\n" + context
+
+    # Convert generic UI messages to OpenAI format
+    gpt_messages = [{"role": "system", "content": system_prompt}]
+    
+    for m in messages:
+        # Map frontend "model" role to OpenAI "assistant" role
+        role = "assistant" if m["role"] == "model" else "user"
+        gpt_messages.append({"role": role, "content": m["content"]})
+
+    try:
+        response = await client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=gpt_messages
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error(f"LLM chat error: {e}")
+        return f"Sorry, Groq returned an error: {e}"
 
     # Build context string for the System Prompt
     context = f"Script Title: {analysis.get('script_title', 'Untitled')}\n"

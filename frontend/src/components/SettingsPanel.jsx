@@ -1,6 +1,17 @@
-import { Sliders, Cpu, Download, Database } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Sliders, Cpu, Download, Database, Key, CheckCircle2 } from 'lucide-react';
 
 export default function SettingsPanel() {
+  const [apiKey, setApiKey] = useState(localStorage.getItem('groq_api_key') || '');
+  const [saved, setSaved] = useState(false);
+
+  const handleSaveKey = (val) => {
+    setApiKey(val);
+    localStorage.setItem('groq_api_key', val);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
   return (
     <div className="glass rounded-2xl p-8 shadow-2xl shadow-black/40 ring-1 ring-white/5 relative overflow-hidden">
       {/* Background glow */}
@@ -23,11 +34,27 @@ export default function SettingsPanel() {
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Primary Model</label>
               <select className="bg-black/40 border border-white/10 rounded-lg py-2.5 px-3 text-sm text-white focus:ring-1 focus:ring-accent outline-none">
-                 <option>Google Gemini 2.0 Flash (Fast)</option>
+                 <option>Groq Llama 3 70B (User Managed)</option>
+                 <option>Google Gemini 2.0 Flash (Cloud)</option>
                  <option>GPT-4o (Reasoning)</option>
                  <option>Claude 3.5 Sonnet (Creative)</option>
-                 <option>Llama 3 70B (Local)</option>
               </select>
+            </div>
+
+            <div className="flex flex-col gap-2 mt-2">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <Key size={12} className="text-accent" />
+                <span>Groq API Key</span>
+                {saved && <span className="ml-auto text-[10px] text-emerald-400 flex items-center gap-1"><CheckCircle2 size={10} /> Auto-saved</span>}
+              </label>
+              <input 
+                type="password"
+                value={apiKey}
+                onChange={(e) => handleSaveKey(e.target.value)}
+                placeholder="gsk_..."
+                className="bg-black/40 border border-white/10 rounded-lg py-2.5 px-3 text-sm text-white focus:ring-1 focus:ring-accent outline-none font-mono"
+              />
+              <p className="text-[10px] text-slate-500 italic">Your key is stored locally in your browser and used for simulation insights.</p>
             </div>
 
             <div className="flex flex-col gap-2 mt-2">

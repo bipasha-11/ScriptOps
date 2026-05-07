@@ -1,6 +1,11 @@
-import { Search, Bell, User, LogOut } from 'lucide-react';
+import { Search, Bell, User, LogOut, Settings } from 'lucide-react';
 
 export default function TopBar({ onLogout, userName }) {
+  const scrollToSettings = () => {
+    const el = document.getElementById('settings');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <header className="h-20 bg-primary/95 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-10 sticky top-0 z-40 w-full shadow-sm">
        <div className="flex items-center bg-secondary/80 px-4 py-2.5 rounded-2xl border border-white/10 w-96 focus-within:border-accent/50 focus-within:ring-1 focus-within:ring-accent/50 transition-all">
@@ -13,12 +18,16 @@ export default function TopBar({ onLogout, userName }) {
        </div>
        
        <div className="flex items-center gap-8">
-          <button onClick={onLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-sm font-bold uppercase tracking-widest mr-4">
-             <LogOut size={18} /> Logout
+          <button 
+            onClick={scrollToSettings}
+            className="flex items-center gap-2 text-slate-400 hover:text-accent transition-colors text-sm font-bold uppercase tracking-widest group"
+          >
+             <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" /> 
+             <span className="hidden lg:inline">System Config</span>
           </button>
-          <button className="relative text-slate-400 hover:text-white transition-colors hover:scale-105 transform duration-200">
-            <Bell size={22} />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full border-2 border-primary animate-pulse"></span>
+
+          <button onClick={onLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-400 transition-colors text-sm font-bold uppercase tracking-widest">
+             <LogOut size={18} /> Logout
           </button>
           
           <div className="flex items-center gap-4 pl-8 border-l border-white/10 cursor-pointer group">

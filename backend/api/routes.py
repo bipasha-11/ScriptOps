@@ -3,7 +3,7 @@ REST API routes for the Script Intelligence system.
 All endpoints under /api/v1/
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Header
 from ..core.parser import extract_text_from_file, split_into_scenes
 from ..core.extractor import analyze_scene
 from ..core.risk_engine import analyze_risk_and_cost
@@ -135,26 +135,26 @@ async def whatif_scene(scene_id: int, body: WhatIfRequest, user=Depends(get_curr
 
 # ── LLM Insights ─────────────────────────────────────────────────────────────
 @router.get("/insights")
-async def get_overall_insights(user=Depends(get_current_user)):
+async def get_overall_insights(user=Depends(get_current_user), x_groq_api_key: str = Header(None)):
     """Generate LLM-powered overall script insights."""
     if not _store["scenes"]:
         raise HTTPException(404, "No script uploaded yet")
     analysis = _get_analysis_summary()
-    insights = await generate_overall_insight(analysis)
+    insights = await generate_overall_insight(analysis, api_key=x_groq_api_key)
     return insights
 
 
 @router.get("/insights/{scene_id}")
-async def get_scene_insight(scene_id: int, user=Depends(get_current_user)):
+async def get_scene_insight(scene_id: int, user=Depends(get_current_user), x_groq_api_key: str = Header(None)):
     """Generate LLM-powered insight for a single scene."""
     for s in _store["scenes"]:
         if s["scene_number"] == scene_id:
-            insight = await generate_scene_insight(s)
+            insight = await generate_scene_insight(s, api_key=x_groq_api_key)
             return insight
     raise HTTPException(404, f"Scene {scene_id} not found")
 
 @router.post("/insights/chat", response_model=ChatResponse)
-async def chat_interaction(body: ChatRequest, user=Depends(get_current_user)):
+async def chat_interaction(body: ChatRequest, user=Depends(get_current_user), x_groq_api_key: str = Header(None)):
     """Send message to LLM directly."""
     if not _store["scenes"]:
         raise HTTPException(404, "No script uploaded yet")
@@ -163,7 +163,8 @@ async def chat_interaction(body: ChatRequest, user=Depends(get_current_user)):
     response_text = await chat_with_script(
         analysis, 
         [m.model_dump() for m in body.messages], 
-        body.selected_scene_id
+        body.selected_scene_id,
+        api_key=x_groq_api_key
     )
     return ChatResponse(response=response_text)
 
