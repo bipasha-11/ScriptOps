@@ -25,22 +25,22 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS — allow Vercel frontend (set FRONTEND_URL in Render env vars)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "*").rstrip("/")
+# CORS — allow Vercel frontend
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://scriptops.vercel.app").rstrip("/")
 origins = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "http://localhost:8000",
+    "https://scriptops.vercel.app",
+    "https://scriptops-1.onrender.com",
 ]
 
-if FRONTEND_URL != "*":
+if FRONTEND_URL not in origins and FRONTEND_URL != "*":
     origins.append(FRONTEND_URL)
-    origins.append(f"{FRONTEND_URL}/")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if FRONTEND_URL == "*" else origins,
-    allow_credentials=True if FRONTEND_URL != "*" else False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
