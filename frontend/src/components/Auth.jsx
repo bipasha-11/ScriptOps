@@ -46,9 +46,9 @@ const Auth = ({ onLogin, onCancel }) => {
       if (isLogin) {
         // Direct Login Success
         console.log("[AUTH] Login successful, no OTP needed.");
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('userEmail', data.email);
-        localStorage.setItem('userName', data.name);
+        sessionStorage.setItem('token', data.access_token);
+        sessionStorage.setItem('userEmail', data.email);
+        sessionStorage.setItem('userName', data.name);
         onLogin(data);
       } else {
         // Signup triggered OTP
@@ -109,9 +109,9 @@ const Auth = ({ onLogin, onCancel }) => {
       }
       if (!response.ok) throw new Error(data.detail || `Invalid OTP (${response.status})`);
       
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('userEmail', data.email);
-      localStorage.setItem('userName', data.name);
+      sessionStorage.setItem('token', data.access_token);
+      sessionStorage.setItem('userEmail', data.email);
+      sessionStorage.setItem('userName', data.name);
       onLogin(data);
     } catch (err) {
       setError(err.message);

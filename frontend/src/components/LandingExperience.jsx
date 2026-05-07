@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import ScriptUpload from './ScriptUpload';
-import { ShieldAlert, SplitSquareHorizontal, DollarSign, Fingerprint } from 'lucide-react';
+import { ShieldAlert, SplitSquareHorizontal, DollarSign, Fingerprint, LogOut } from 'lucide-react';
 
 const ScrollWalker = ({ direction = "right" }) => {
   const ref = useRef(null);
@@ -63,6 +63,19 @@ export default function LandingExperience({ onFileSelect, onAuthClick, isAuthent
           )
         }}
       />
+
+      {/* Floating Sign Out Button */}
+      {isAuthenticated && (
+        <motion.button 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={onLogout}
+          className="fixed top-8 right-8 z-[100] flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all group backdrop-blur-md"
+        >
+          <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-bold uppercase tracking-widest">Sign Out</span>
+        </motion.button>
+      )}
 
       {/* STAGE 1: HERO */}
       <section className="relative min-h-[90vh] flex flex-col items-center justify-center z-10 p-8 pt-20">

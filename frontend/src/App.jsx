@@ -19,10 +19,10 @@ function App() {
   const [selectedScene, setSelectedScene] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem('token'));
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [userName, setUserName] = useState(localStorage.getItem('userName'));
-  const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail'));
+  const [userName, setUserName] = useState(sessionStorage.getItem('userName'));
+  const [userEmail, setUserEmail] = useState(sessionStorage.getItem('userEmail'));
 
   const handleLogin = (data) => {
     console.log("Login successful, updating state:", data);
@@ -34,9 +34,9 @@ function App() {
 
   const handleLogout = () => {
     console.log("Logging out...");
-    localStorage.removeItem('token');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userName');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('userEmail');
+    sessionStorage.removeItem('userName');
     setIsAuthenticated(false);
     setUserName(null);
     setUserEmail(null);
@@ -47,7 +47,7 @@ function App() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       if (token && (isAuthenticated || !userName || userName === 'undefined')) {
         try {
           const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
@@ -64,11 +64,11 @@ function App() {
             const data = await res.json();
             if (data.name) {
               setUserName(data.name);
-              localStorage.setItem('userName', data.name);
+              sessionStorage.setItem('userName', data.name);
             }
             if (data.email) {
               setUserEmail(data.email);
-              localStorage.setItem('userEmail', data.email);
+              sessionStorage.setItem('userEmail', data.email);
             }
             setIsAuthenticated(true);
           }
@@ -93,7 +93,7 @@ function App() {
     try {
       const form = new FormData();
       form.append('script', file);
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const threshold = localStorage.getItem('risk_threshold') || 50;
       
       const res = await fetch(`${API_BASE_URL}/api/v1/upload`, { 
