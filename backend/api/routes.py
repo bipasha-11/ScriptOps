@@ -267,6 +267,7 @@ async def match_creators_endpoint(body: MatchRequest, user=Depends(get_current_u
         
     return MatchResponse(matches=formatted_matches)
     
+import html
 from fastapi.responses import FileResponse, StreamingResponse
 import io
 from reportlab.lib.pagesizes import letter
@@ -303,7 +304,7 @@ async def export_pdf(email: str = Depends(get_current_user), db: Session = Depen
     elements = []
 
     # Title
-    elements.append(Paragraph(f"Script Intelligence Report: {project.title}", styles['Title']))
+    elements.append(Paragraph(f"Script Intelligence Report: {html.escape(project.title)}", styles['Title']))
     elements.append(Spacer(1, 12))
 
     # Executive Summary
@@ -320,7 +321,7 @@ async def export_pdf(email: str = Depends(get_current_user), db: Session = Depen
     for s in summary['scenes']:
         data.append([
             str(s['scene_number']),
-            s['slugline'][:30] + "..." if len(s['slugline']) > 30 else s['slugline'],
+            (s['slugline'] or "")[:30] + "..." if len(s['slugline'] or "") > 30 else (s['slugline'] or ""),
             f"{s['risk_score']}",
             f"${s['budget']}K"
         ])
@@ -337,7 +338,12 @@ async def export_pdf(email: str = Depends(get_current_user), db: Session = Depen
     ]))
     elements.append(t)
 
-    doc.build(elements)
+    try:
+        doc.build(elements)
+    except Exception as e:
+        print(f"PDF Build Error: {e}")
+        raise HTTPException(500, f"Failed to generate PDF document: {str(e)}")
+
     buffer.seek(0)
     
     return StreamingResponse(

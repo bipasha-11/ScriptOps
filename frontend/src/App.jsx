@@ -161,7 +161,10 @@ function App() {
       const res = await fetch(`${API_BASE_URL}/api/v1/export/pdf`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Export failed");
+      }
       
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -173,7 +176,7 @@ function App() {
       a.remove();
     } catch (e) {
       console.error(e);
-      alert("Failed to generate PDF. Please try again.");
+      alert(e.message || "Failed to generate PDF. Please try again.");
     }
   };
 
@@ -183,7 +186,10 @@ function App() {
       const res = await fetch(`${API_BASE_URL}/api/v1/export/fdx`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Export failed");
+      }
       
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -195,7 +201,7 @@ function App() {
       a.remove();
     } catch (e) {
       console.error(e);
-      alert("Failed to export FDX. Please try again.");
+      alert(e.message || "Failed to export FDX. Please try again.");
     }
   };
 

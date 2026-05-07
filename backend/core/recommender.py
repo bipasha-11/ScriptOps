@@ -13,12 +13,19 @@ CSV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__
 df = pd.DataFrame()
 technician_embeddings = None
 
+print(f"Checking for dataset at {CSV_PATH}...")
 if os.path.exists(CSV_PATH):
-    df = pd.read_csv(CSV_PATH)
-    # Semantic text block describing the creator
-    df['combined_features'] = df['Genres'].fillna('') + ". " + df['Style_Tags'].fillna('') + ". " + df['Notable_Projects'].fillna('')
-    # Pre-compute all embeddings at startup for zero-latency inference
-    technician_embeddings = model.encode(df['combined_features'].tolist())
+    try:
+        df = pd.read_csv(CSV_PATH)
+        print(f"Successfully loaded {len(df)} technicians from CSV.")
+        # Semantic text block describing the creator
+        df['combined_features'] = df['Genres'].fillna('') + ". " + df['Style_Tags'].fillna('') + ". " + df['Notable_Projects'].fillna('')
+        # Pre-compute all embeddings at startup for zero-latency inference
+        print("Pre-computing embeddings...")
+        technician_embeddings = model.encode(df['combined_features'].tolist())
+        print("Embeddings ready.")
+    except Exception as e:
+        print(f"ERROR loading CSV or computing embeddings: {e}")
 else:
     print(f"CRITICAL: Dataset not found at {CSV_PATH}")
 

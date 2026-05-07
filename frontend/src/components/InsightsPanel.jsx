@@ -66,6 +66,7 @@ export default function InsightsPanel({ analysis, selectedScene }) {
   const [sceneData, setSceneData] = useState({});
   const [crewData, setCrewData] = useState(null);
   const [crewLoading, setCrewLoading] = useState(false);
+  const [crewError, setCrewError] = useState(null);
   const [loading, setLoading] = useState(false);
   const prevScene = useRef(null);
 
@@ -138,6 +139,7 @@ export default function InsightsPanel({ analysis, selectedScene }) {
 
   const fetchCrew = async () => {
     setCrewLoading(true);
+    setCrewError(null);
     try {
       let keywords = "Cinematic, High Quality, Drama";
       let max_budget = 10000;
@@ -168,9 +170,14 @@ export default function InsightsPanel({ analysis, selectedScene }) {
           }) 
       });
       
+      if (!res.ok) throw new Error("Failed to reach matchmaking engine");
+      
       const data = await res.json();
       setCrewData(data.matches || []);
-    } catch (e) { console.error(e); } 
+    } catch (e) { 
+      console.error(e); 
+      setCrewError(e.message);
+    } 
     finally { setCrewLoading(false); }
   };
 
@@ -471,6 +478,25 @@ export default function InsightsPanel({ analysis, selectedScene }) {
             )}
             {crewLoading && (
               <div className="flex flex-col gap-3 mt-2"><ShimmerRow /><ShimmerRow /></div>
+            )}
+            {crewError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-5 flex justify-between items-center m-auto max-w-sm">
+                <div className="text-center w-full">
+                  <h4 className="text-red-400 font-bold mb-1 flex items-center justify-center gap-2"><AlertTriangle size={18} /> Radar Offline</h4>
+                  <p className="text-slate-400 text-sm">{crewError}</p>
+                  <button onClick={fetchCrew} className="mt-4 px-4 py-2 bg-red-500/20 text-red-300 rounded-lg text-sm font-bold border border-red-500/20 hover:bg-red-500/30">Try Again</button>
+                </div>
+              </div>
+            )}
+            {crewData && crewData.length === 0 && !crewLoading && !crewError && (
+              <div className="flex flex-col items-center justify-center p-12 text-center h-full m-auto">
+                 <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-4 text-slate-500">
+                   <Users size={32} strokeWidth={1.5} className="opacity-50" />
+                 </div>
+                 <h3 className="text-lg font-medium text-slate-300">No Optimal Matches</h3>
+                 <p className="text-sm mt-1 max-w-xs text-slate-500">No technicians found in the matrix for these specific logistical constraints. Try adjusting the scene budget or keywords.</p>
+                 <button onClick={() => setCrewData(null)} className="mt-6 text-accent text-xs font-bold hover:underline">Reset Search</button>
+              </div>
             )}
             {crewData && crewData.map((match, i) => (
               <motion.div 
