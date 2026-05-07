@@ -211,3 +211,22 @@ async def match_creators_endpoint(body: MatchRequest, user=Depends(get_current_u
         ))
         
     return MatchResponse(matches=formatted_matches)
+    
+# ── Data Management ──────────────────────────────────────────────────────────
+@router.post("/purge")
+async def purge_data(user=Depends(get_current_user)):
+    """Clear all project data from the in-memory store."""
+    _store["script_title"] = ""
+    _store["raw_text"] = ""
+    _store["scenes"] = []
+    return {"status": "success", "message": "Project data purged"}
+
+@router.get("/export/pdf")
+async def export_pdf(user=Depends(get_current_user)):
+    """Placeholder for PDF export."""
+    return {"status": "success", "message": "PDF Report Generation Started (Mock)"}
+
+@router.get("/export/fdx")
+async def export_fdx(user=Depends(get_current_user)):
+    """Placeholder for FDX export."""
+    return {"status": "success", "message": "FDX Notes Generation Started (Mock)"}

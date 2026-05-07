@@ -137,6 +137,33 @@ function App() {
     }
   };
 
+  const handlePurge = async () => {
+    if (!window.confirm("Are you sure you want to purge all project data? This cannot be undone.")) return;
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/v1/purge`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setAnalysis(null);
+        setSelectedScene(null);
+        alert("Project data purged successfully.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    alert("PDF Report Generation Started. Your report will be ready for download in a few moments.");
+    // In a real app, this would trigger a download or a redirect to the generated file
+  };
+
+  const handleExportFDX = async () => {
+    alert("FDX Notes Exporting... Check your downloads folder.");
+  };
+
   const showChrome = analysis || isAnalyzing;
 
   return (
@@ -152,6 +179,9 @@ function App() {
           isCollapsed={isSidebarCollapsed} 
           onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
           onLogout={handleLogout}
+          onPurge={handlePurge}
+          onExportPDF={handleExportPDF}
+          onExportFDX={handleExportFDX}
         />
       )}
       
